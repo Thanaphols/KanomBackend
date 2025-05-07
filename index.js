@@ -20,7 +20,7 @@ app.use(
   );
 
 app.get('/', (req, res)=>{
-    res.send("Home")
+    res.send("Welcome TO Barn farm Kanom")
 })
 app.listen(PORT, (error) =>{
     if(!error)
@@ -33,11 +33,12 @@ app.listen(PORT, (error) =>{
 const RouterUser = require('./routers/user')
 const RouterProduct = require('./routers/product')
 const RouterOrder = require('./routers/order')
+const RouterCategory = require('./routers/category')
 
 const apiRouter = express.Router();
 apiRouter.use('/user',RouterUser)
 apiRouter.use('/product',RouterProduct)
 apiRouter.use('/order',RouterOrder)
+apiRouter.use('/category',RouterCategory)
 
-// app.use('/api', [RouterUser,RouterProduct ,RouterOrder ])
 app.use('/api', apiRouter)
