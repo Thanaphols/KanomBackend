@@ -4,16 +4,16 @@ exports.getallProduct = (req, res)=>{
     res.send("All product")
 }
 exports.addProduct = (req, res) => {
-    let id = req.body.c_ID
-    let name = req.body.p_Name
-    let detail = req.body.p_Detail
-    let price = req.body.p_Price
-    let quatity = req.body.p_Quatity
+    const id = req.body.c_ID
+    const name = req.body.p_Name
+    const detail = req.body.p_Detail
+    const price = req.body.p_Price
+    const quatity = req.body.p_Quatity
     if (name == undefined || detail == undefined || price == undefined || quatity == undefined || id == undefined ){
         return res.status(400).send({message : "Please Enter All Data"})
     }
-    console.log(name)
-    mysql.query("INSERT INTO product ( p_Name,p_Detail,p_Price,p_Quatity,c_ID  ) VALUES ( ?,?,?,?,? ) ", [name,detail,price,quatity ,id ] , (err)=>{
+    const query = `INSERT INTO product ( p_Name,p_Detail,p_Price,p_Quatity,c_ID  ) VALUES ( ?,?,?,?,? ) `
+    mysql.query(query, [name,detail,price,quatity ,id ] , (err)=>{
        if(err){
         console.log(err)
         return res.status(401).send( {message: "Can't create Product "})
@@ -36,5 +36,4 @@ exports.getProductID = (req,res)=>{
             }
         })
     }
-
 }

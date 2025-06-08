@@ -1,10 +1,9 @@
 const express = require("express")
 const router = express.Router()
-const categoryController = require('../controller/categoryController')
+const categoryController = require('../controllers/categoryController')
 
 router.get('/',categoryController.allCategory)
-router.get('/getCategory/:c_ID',categoryController.selectCategory)
 router.post('/addCategory', categoryController.addCategory)
 router.patch('/updateCategory',categoryController.updateCategory)
-
+router.get('/getCategory/:c_ID',categoryController.selectCategory)
 module.exports = router
