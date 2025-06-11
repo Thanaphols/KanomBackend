@@ -7,4 +7,4 @@ npm install body-parser <br>
 npm install mysql2 <br>
 npm install cors <br>
 <h1> Run </h1>
-node run start   // run nodemon </br>
+npm run start   // run nodemon </br>
