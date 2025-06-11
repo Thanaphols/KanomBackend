@@ -8,3 +8,5 @@ npm install mysql2 <br>
 npm install cors <br>
 <h1> Run </h1>
 npm run start   // run nodemon </br>
+<h1> Security </h1>
+Jason Web Token (JWT token)
