@@ -17,4 +17,4 @@ connection.connect((error)=>{
     }
 })
 
-module.exports = connection;
+module.exports = connection.promise();

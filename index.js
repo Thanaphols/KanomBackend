@@ -26,13 +26,13 @@ const RouterUsers = require('./routers/user')
 const RouterProduct = require('./routers/product')
 const RouterOrder = require('./routers/order')
 const RouterCategory = require('./routers/category')
-
+const RouterAuth = require('./routers/auth')
 const apiRouter = express.Router();
 apiRouter.use('/users',RouterUsers)
 apiRouter.use('/products',RouterProduct)
 apiRouter.use('/orders',RouterOrder)
 apiRouter.use('/categorys',RouterCategory)
-
+apiRouter.use('/auth',RouterAuth)
 app.use('/api', apiRouter)
 
 app.get('/', (req, res)=>{

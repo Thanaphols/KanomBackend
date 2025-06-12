@@ -1,4 +1,4 @@
-const mysql = require('../db')
+const conn = require('../db')
 
 exports.getallOrder= (req, res)=>{
     res.send("All order")

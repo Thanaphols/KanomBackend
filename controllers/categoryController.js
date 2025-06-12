@@ -1,7 +1,7 @@
-const mysql = require('../db')
+const conn = require('../db')
 
 exports.allCategory = (req,res)=>{
-    mysql.query(" SELECT * FROM category " , (err,data)=>{
+    conn.query(" SELECT * FROM category " , (err,data)=>{
         if(err){
             console.log(err)
            return res.status(401).send({message : "Some thing weng wrongs" })
@@ -18,7 +18,7 @@ exports.selectCategory = (req,res)=>{
     if ( id == undefined || id == '' ){ 
         return res.status(400).send({message: "Please Enter All Data"}) 
     }  
-    mysql.query(" SELECT * FROM category  WHERE c_ID = ? ",[ id], (err,data)=>{
+    conn.query(" SELECT * FROM category  WHERE c_ID = ? ",[ id], (err,data)=>{
         if(err){
             console.log(err)
             return res.status(401).send({message : "Some thing weng wrongs" })
@@ -37,7 +37,7 @@ exports.addCategory = ( req,res) =>{
     const name = req.body.c_Name
     name == undefined || name == '' ? res.status(400).send({message : " Please Enter All Data "})  :  console.log(name)
     
-    mysql.query( " INSERT INTO category (c_Name)  VALUES ( ? ) ",[ name],(err)=>{
+    conn.query( " INSERT INTO category (c_Name)  VALUES ( ? ) ",[ name],(err)=>{
         if(err){
             console.log(err)
             return res.status(400).send({message : " Something weng Wrongs Can't Create Category "})
@@ -54,7 +54,7 @@ exports.updateCategory = (req,res)=>{
         return res.status(400).send({message: "Please Enter All Data"}) 
     }  
 
-    mysql.query(" UPDATE  category set c_Name = ?  WHERE c_ID = ? ",[name, id], (err)=>{
+    conn.query(" UPDATE  category set c_Name = ?  WHERE c_ID = ? ",[name, id], (err)=>{
         if(err){
             console.log(err)
             return res.status(401).send({message : "Can't Update Category" })
@@ -69,7 +69,7 @@ exports.deleteCategory = (req, res) =>{
     if(id == undefined || id == ''){
         return res.status(400).send({message : "ID is missing please try again later"})
     }
-    mysql.query("DELETE catgory WHERE c_ID = ?" ,[id], (error)=>{
+    conn.query("DELETE catgory WHERE c_ID = ?" ,[id], (error)=>{
         if(error){
             console.log(error)
             return res.status(401).send({message : "Can't Delete Category" })
