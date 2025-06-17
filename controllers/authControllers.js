@@ -53,5 +53,4 @@ exports.login = async (req,res)=>{
     }
 }
 
-exports.validead
 
