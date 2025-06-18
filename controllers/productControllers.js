@@ -1,7 +1,8 @@
 const conn = require('../db')
 exports.getallProduct = async (req,res)=>{
     try {
-        const SQL = "SELECT * FROM product"
+    
+    const SQL = "SELECT * FROM product"
     const [result] = await conn.query(SQL)
     const data = result[0]
         return res.status(200).send({message: "Select Success", data})
