@@ -11,5 +11,3 @@ exports.getUser = async (req,res)=>{
    console.log('user'  , user)
    return res.status(200).send({message: 'user Data here'})
 }
-
-
