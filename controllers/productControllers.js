@@ -11,14 +11,9 @@ exports.getallProduct = async (req,res)=>{
     }
 }
 exports.addProduct = async (req, res) => {
-<<<<<<< HEAD
     const { p_Name,p_Detail,p_Price,p_Amount,c_ID} = req.body
     try {
        if (!p_Name || !p_Detail|| !p_Price || !p_Amount || !c_ID ) {
-=======
-    const [ id,name,detail,price,amount] = req.body
-    if (!name || !detail  || !price  || !amount  || !id  ){
->>>>>>> 8c3e996bfc3451eaa3275006c93bfd24336e468a
         return res.status(400).send({message : "Please Enter All Data"})
     }
         const checkSQL = `SELECT * FROM category Where c_ID = ?`
