@@ -2,7 +2,7 @@ require('dotenv').config()
 const jwt = require('jsonwebtoken')
 validateToken = (req,res,next)=>{
     const authToken =  req.headers['authorization']
-    
+    //console.log(authToken)
     if(!authToken){
         return res.status(401).send({message : 'Unknow Token'})
     }

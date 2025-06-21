@@ -1,7 +1,14 @@
 const conn = require('../db')
-
-exports.getallProduct = (req, res)=>{
-    res.send("All product")
+exports.getallProduct = async (req,res)=>{
+    try {
+    
+    const SQL = "SELECT * FROM product"
+    const [result] = await conn.query(SQL)
+    const data = result[0]
+        return res.status(200).send({message: "Select Success", data})
+    } catch (error) {
+        return res.status(400).send({message : 'Someing Went Wrongs'})
+    }
 }
 exports.addProduct = async (req, res) => {
     const { p_Name,p_Detail,p_Price,p_Amount,c_ID} = req.body
@@ -26,21 +33,18 @@ exports.addProduct = async (req, res) => {
     }
 };
 
-exports.getProductID = async (req,res)=>{
-    const {p_id} = req.params
-    try {
-        if(!p_id) {
-            return res.status(400).send({message : 'ID product is missing Please Try agina later'})
-        }
+exports.getProductID = (req,res)=>{
+     const id = req.params.p_id
+    if (id == undefined || id == ''){
+        return res.status(400).send({message : 'ID product is missing Please Try agina later'})
+    }else{
         const SQL = "SELECT * FROM product WHERE p_id = ?"
-        const [result] = await conn.query(SQL,[p_id])
-        if(result.length === 0) {
-            return res.status(401).send({message : 'Unknow Product ID : ' + p_id})
-        }
-        const data = result[0]
-        return res.status(201).send({message : 'Select Product ID : ' + p_id , data : data})
-    } catch (error) {
-        console.log(error)
-        return res.status(400).send({message: 'Something Went Wrongs'})
+        conn.query(SQL,[id],(err,data)=>{
+            if(err){
+                return res.stauts(401).send({message : 'Something Wrongs'})
+            }else{
+                return res.status(201).send({message : 'Select Product ID : '+id , data : data})
+            }
+        })
     }
 }
