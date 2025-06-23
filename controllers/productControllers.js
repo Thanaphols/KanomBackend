@@ -1,12 +1,13 @@
 const conn = require('../db')
 exports.getallProduct = async (req,res)=>{
     try {
-    const SQL = "SELECT * FROM product"
+    const SQL = "SELECT  p_ID,p_Name,p_Detail,p_Price,p_Amount,p_Img,c_Name FROM product INNER JOIN category ON product.c_ID = category.c_ID "
     const [result] = await conn.query(SQL)
-    const data = result[0]
+    const data = result
         return res.status(200).send({message: "Select Success", data})
     } catch (error) {
-        return res.status(400).send({message : 'Someting Went Wrong'})
+        console.log(error)
+        return res.status(500).send({message : 'Someting Went Wrong'})
     }
 }
 exports.addProduct = async (req, res) => {

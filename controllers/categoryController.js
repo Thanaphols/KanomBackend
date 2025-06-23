@@ -21,7 +21,7 @@ exports.selectCategory = async (req,res)=>{
         }
         const SQL = " SELECT * FROM category  WHERE c_ID = ? "
         const [result] = await conn.query(SQL,[c_ID])
-        if(result.length === 0) {
+        if( result.length === 0 ) {
             return res.status(400).send({message : "No Category ID : " + c_ID })
         }
         const data = result[0]

@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
 exports.register = async (req,res)=>{
-    const { u_userName ,de_firstName,de_lastName,de_tel, u_passWord } = req.body
+    const { u_userName, de_firstName , de_lastName, de_tel, u_passWord } = req.body
     try {
         if (!u_userName || !de_firstName || !de_lastName || !de_tel || !u_passWord) {
             return res.status(400).send({message : 'Please Enter All Data'})
@@ -79,4 +79,27 @@ exports.checkUser = async (req,res) =>{
         console.log(error)
         return res.statuts(500).send({message : `Something Went Wrong`})
     }
+}
+
+exports.updateProfile = async (req,res) => {
+     const { u_ID,de_firstName,de_lastName,de_tel,de_address,latitude,longitude  } = req.body
+    try {
+        if (!u_ID || !de_firstName || !de_lastName || !de_tel ) {
+            return res.status(400).send({message : 'Please Enter All Data'})
+        }
+        const checkSQL = `SELECT * from users WHERE u_ID = ?`
+        const [checkResult] = await conn.query(checkSQL,[u_ID])
+        if (checkResult.length === 0) {
+            return res.status(404).send({message : `Unknow User ID : ${u_ID}`})
+        }
+        const updatetUserDetailSQL = 'UPDATE usersdetail SET  de_firstName = ?, de_lastName = ?,de_tel = ? , de_address = ? , latitude = ? , longitude = ? WHERE u_ID = ?'
+        const [updateResult] = await conn.query(updatetUserDetailSQL,[de_firstName,de_lastName,de_tel,de_address,latitude,longitude,u_ID])
+        if (updateResult.affectedRows === 0) {
+            return res.status(400).send({message : `Update Profile Unsuccess`})
+        }
+        return res.status(200).send({message : `Update Profile Successfully`})
+     } catch (error) {
+        console.log(error)
+        return res.statuts(500).send({message : `Something Went Wrong`})
+     }
 }
