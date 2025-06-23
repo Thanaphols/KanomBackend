@@ -1,0 +1,3 @@
+authVerufy = (req,res) => {
+    
+}

@@ -1,13 +1,12 @@
 const conn = require('../db')
 exports.getallProduct = async (req,res)=>{
     try {
-    
     const SQL = "SELECT * FROM product"
     const [result] = await conn.query(SQL)
     const data = result[0]
         return res.status(200).send({message: "Select Success", data})
     } catch (error) {
-        return res.status(400).send({message : 'Someing Went Wrongs'})
+        return res.status(400).send({message : 'Someting Went Wrong'})
     }
 }
 exports.addProduct = async (req, res) => {
@@ -48,6 +47,63 @@ exports.getProductID = async (req,res)=>{
         return res.status(201).send({message : 'Select Product ID : ' + p_id , data : data})
     } catch (error) {
         console.log(error)
-        return res.status(400).send({message: 'Something Went Wrongs'})
+        return res.status(400).send({message: 'Something Went Wrong'})
+    }
+}
+
+exports.updateProduct = async (req,res)=>{
+    const { p_ID,p_Name,p_Detail,p_Price,p_Amount,c_ID} = req.body
+    try {
+        if (!p_ID || !p_Name || !p_Detail || p_Price === null || p_Price === undefined || p_Amount === null || p_Amount === undefined || !c_ID) {
+            return res.status(400).send({message : 'Please Enter All Data'})
+        }
+        if (p_Price < 0) {
+            return res.status(400).send({message : `Price Can't below 0`})
+        }
+        if (p_Amount < 0) {
+            return res.status(400).send({message : `Amount Can't below 0`})
+        }
+        const checkSQL = `SELECT * FROM product WHERE p_id = ?`
+        const [checkResult] = await conn.query(checkSQL,[p_ID])
+        if (checkResult.length === 0) {
+            return res.status(404).send({message : `Unknow Product ID : ${p_ID}` })
+        }
+        const checkCategorySQL = `SELECT * FROM category WHERE c_ID = ?`
+        const [checkCategoryResult] = await conn.query(checkCategorySQL,[c_ID])
+        if (checkCategoryResult.length === 0) {
+            return res.status(404).send({message : `Unknow Categoru ID : ${c_ID}`})
+        }
+        const updateSQL = `UPDATE product SET p_Name = ? , p_Detail = ? , p_Price = ? , p_Amount = ? , c_ID = ?  WHERE p_ID = ? `
+        const [updateResult] = await conn.query(updateSQL,[p_Name,p_Detail,p_Price,p_Amount,c_ID,p_ID])
+        if (updateResult.affectedRows === 0) {
+            return res.status(400).send({message : `Update Product ID : ${p_ID} Unsuccessfully`})
+        }
+        return res.status(200).send({message : `Update Product ID : ${p_ID} Successfully`})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : 'Something Went Wrong'})
+    }
+}
+
+exports.deleteProduct = async (req,res) => {
+    const {p_ID} = req.body
+    try {
+        if (!p_ID) {
+            return res.status(400).send({message : `Missing Product ID `})
+        }
+        const checkSQL = `SELECT * FROM pruduct WHERE p_ID = ?`
+        const [checkResult] = await conn.query(checkSQL,[p_ID])
+        if (checkResult.length === 0) {
+            return res.status(404).send({message : `Unknow Product ID : ${p_ID}`})
+        }
+        const deleteSQL = `DELETE FROM product WHERE p_ID = ?`
+        const [deleteResult] = await conn.query(deleteSQL,[p_ID])
+        if (deleteResult.affectedRows === 0) {
+            return res.status(400).send({message : `Delete Product ID : ${p_ID} Unsuccessfully`})
+        }
+        return res.status(400).send({message : `Delete Product ID : ${p_ID} Successfully`})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : `Something Went Wrong`})
     }
 }

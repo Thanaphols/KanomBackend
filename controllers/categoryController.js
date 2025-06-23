@@ -6,7 +6,7 @@ exports.allCategory = async (req,res)=>{
         if(result.length === 0) {
             return res.status(400).send({message : "No Data" })
         }
-        const data = result[0]
+        const data = result
         return res.status(200).send({message : "Select All Data success" , data : data })
     } catch (error) {
         console.log(error)
@@ -93,7 +93,7 @@ exports.deleteCategory = async (req, res) =>{
         const [productResult] = await conn.query(productSQL,[c_ID])
         const categorySQL = "DELETE FROM category WHERE c_ID = ?"
         const [categoryResult] = await conn.query(categorySQL ,[c_ID])
-        if(categoryResult.affectedRows === 0){
+        if (categoryResult.affectedRows === 0) {
             return res.status(400).send({message : "Delete Category Unsuccessful"})
         }
         return res.status(200).send({message : `Delete Product in Category ID : ${c_ID} AND Delete Category ID :  ${c_ID} `})

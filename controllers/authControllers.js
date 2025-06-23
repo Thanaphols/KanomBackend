@@ -49,8 +49,9 @@ exports.login = async (req,res)=>{
             return res.status(400).send({message: 'Login failed (wrong username or password)' })
         }
         const userData = {
-            username: dataUser.u_userName ,
-            role : dataUser.u_role
+
+            u_userName: dataUser.u_userName ,
+            u_role : dataUser.u_role
         }
         const secret = process.env.SECRET_KEY_Token
         const options = {expiresIn: '1h'}
@@ -62,3 +63,20 @@ exports.login = async (req,res)=>{
     }
 }
 
+exports.checkUser = async (req,res) =>{
+    const {u_userName} = req.body
+    try {
+        if (!u_userName) {
+            return res.status(400).send({message : `Please Enter Username`})
+        }
+        const SQL = `SELECT * FROM users WHERE u_userName = ?`
+        const [result] = await conn.query(SQL,[u_userName])
+        if (result.length > 0) {
+            return res.status(400).send({message : `Username Already Used`})
+        }
+        return res.status(200).send({message : `A username can be used`})
+    } catch (error) {
+        console.log(error)
+        return res.statuts(500).send({message : `Something Went Wrong`})
+    }
+}
