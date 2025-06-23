@@ -21,6 +21,7 @@ exports.addProduct = async (req, res) => {
         if(checkResult.length === 0) {
             return res.status(400).send({message: 'Unknow Category'})
         }
+        console.log(c_ID)
         const SQL = `INSERT INTO product ( p_Name,p_Detail,p_Price,p_Amount,c_ID  ) VALUES ( ?,?,?,?,? ) `
         const [result] = await conn.query(SQL, [p_Name,p_Detail,p_Price,p_Amount ,c_ID ] )
         if(result.affectedRows === 0) {
