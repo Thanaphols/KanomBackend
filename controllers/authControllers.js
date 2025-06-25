@@ -103,3 +103,26 @@ exports.updateProfile = async (req,res) => {
         return res.statuts(500).send({message : `Something Went Wrong`})
      }
 }
+
+exports.deleteUser = async (req,res) =>{
+    const {u_ID} = req.body
+    try {
+        if (!u_ID) {
+            return res.status(400).send({message: `User ID is Missing`})
+        }
+        const checkUserSQL = `SELECT * FROM users WHERE u_ID = ?`
+        const [checkUserResult] = await conn.query(checkUserSQL,u_ID)
+        if (checkUserResult.length === 0) {
+            return res.status(404).send({message : `Unknow User ID : ${u_ID}`})
+        }
+        const deleteUserSQL = `DELETE FROM users WHERE u_ID = ?`
+        const [deleteUserResult] = await conn.query(deleteUserSQL,u_ID)
+        if (deleteUserResult.affectedRows === 0) {
+            return res.status(400).send({message : `Delete User ID ${u_ID} Unsuccessfully`})
+        }
+         return res.status(200).send({message : `Delete User ID ${u_ID} Successfully`})
+    } catch (error) {
+        console.log(error)
+        return res.statuts(500).send({message : `Something Went Wrong`})
+    }
+}
