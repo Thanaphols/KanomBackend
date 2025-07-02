@@ -36,7 +36,7 @@ apiRouter.use('/auth',RouterAuth)
 app.use('/api', apiRouter)
 
 app.get('/', (req, res)=>{
-    res.send("Welcome TO Barn farm Kanom")
+    res.status(200).send("Welcome TO Barn farm Kanom")
 })
 app.listen(PORT, (error) =>{
     if(!error)

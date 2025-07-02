@@ -1,11 +1,11 @@
 const express = require("express")
 const router = express.Router()
 const categoryController = require('../controllers/categoryController')
-
+const validateMiddlewere = require('../middleware/validate')
 router.get('/',categoryController.allCategory)
-router.post('/addCategory', categoryController.addCategory)
-router.patch('/updateCategory',categoryController.updateCategory)
+router.post('/addCategory', validateMiddlewere.validateToken, categoryController.addCategory)
+router.patch('/updateCategory',validateMiddlewere.validateToken,categoryController.updateCategory)
 router.get('/getCategory/:c_ID',categoryController.selectCategory)
-router.delete('/deleteCategory/:c_ID',categoryController.deleteCategory)
+router.delete('/deleteCategory/:c_ID',validateMiddlewere.validateToken,categoryController.deleteCategory)
 
 module.exports = router

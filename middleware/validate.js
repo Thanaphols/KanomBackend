@@ -14,8 +14,7 @@ validateToken = (req,res,next)=>{
         if(err){
             return res.status(403).send({message : 'Unauthorized ! Token expire'})
         }
-        req.userName = decode
-        //console.log('decode',decode)
+        req.userData = decode
         return next()
     })
 }

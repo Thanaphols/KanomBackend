@@ -49,7 +49,7 @@ exports.login = async (req,res)=>{
             return res.status(400).send({message: 'Login failed (wrong username or password)' })
         }
         const userData = {
-
+            u_ID : dataUser.u_ID,
             u_userName: dataUser.u_userName ,
             u_role : dataUser.u_role
         }
