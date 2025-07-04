@@ -36,17 +36,17 @@ exports.login = async (req,res)=>{
     try {
         const {username,password} = req.body
         if(!username || !password) {
-            return res.status(401).send({message : 'Please Enter all Data'})
+            return res.status(401).send({message : 'Please Enter all Data'  , status : 0})
         }
         const sql  = ('SELECT * FROM users WHERE u_userName = ?')
         const [userCheck] = await conn.query(sql,[username])
         if(userCheck.length === 0) {
-            return res.status(409).send({message : 'Username not found in the system'})
+            return res.status(409).send({message : 'Username not found in the system' , status : 0})
         }
         const dataUser = userCheck[0];
         const match = await bcrypt.compare(password,dataUser.u_passWord)
         if(!match) {
-            return res.status(400).send({message: 'Login failed (wrong username or password)' })
+            return res.status(400).send({message: 'Login failed (wrong username or password)', status : 0 })
         }
         const userData = {
             u_ID : dataUser.u_ID,
@@ -56,10 +56,10 @@ exports.login = async (req,res)=>{
         const secret = process.env.SECRET_KEY_Token
         const options = {expiresIn: '1h'}
         const token = jwt.sign(userData,secret,options)
-        return res.status(200).send({message: 'Login Success ', token ,userData})
+        return res.status(200).send({message: 'Login Success ', token ,userData , status : 1})
     } catch (error) {
         console.log(error)
-        return res.status(409).send({message:'Something Weng Wrongs'})
+        return res.status(409).send({message:'Something Weng Wrongs' , status : 0})
     }
 }
 
@@ -67,17 +67,17 @@ exports.checkUser = async (req,res) =>{
     const {u_userName} = req.body
     try {
         if (!u_userName) {
-            return res.status(400).send({message : `Please Enter Username`})
+            return res.status(400).send({message : `Please Enter Username`, status : 0})
         }
         const SQL = `SELECT * FROM users WHERE u_userName = ?`
         const [result] = await conn.query(SQL,[u_userName])
         if (result.length > 0) {
-            return res.status(400).send({message : `Username Already Used`})
+            return res.status(400).send({message : `Username Already Used`, status : 0})
         }
-        return res.status(200).send({message : `A username can be used`})
+        return res.status(200).send({message : `A username can be used`, status : 1})
     } catch (error) {
         console.log(error)
-        return res.statuts(500).send({message : `Something Went Wrong`})
+        return res.statuts(500).send({message : `Something Went Wrong`, status : 0})
     }
 }
 
@@ -90,17 +90,17 @@ exports.updateProfile = async (req,res) => {
         const checkSQL = `SELECT * from users WHERE u_ID = ?`
         const [checkResult] = await conn.query(checkSQL,[u_ID])
         if (checkResult.length === 0) {
-            return res.status(404).send({message : `Unknow User ID : ${u_ID}`})
+            return res.status(404).send({message : `Unknow User ID : ${u_ID}`, status : 0})
         }
         const updatetUserDetailSQL = 'UPDATE usersdetail SET  de_firstName = ?, de_lastName = ?,de_tel = ? , de_address = ? , latitude = ? , longitude = ? WHERE u_ID = ?'
         const [updateResult] = await conn.query(updatetUserDetailSQL,[de_firstName,de_lastName,de_tel,de_address,latitude,longitude,u_ID])
         if (updateResult.affectedRows === 0) {
-            return res.status(400).send({message : `Update Profile Unsuccess`})
+            return res.status(400).send({message : `Update Profile Unsuccess`, status : 0})
         }
-        return res.status(200).send({message : `Update Profile Successfully`})
+        return res.status(200).send({message : `Update Profile Successfully`, status : 1})
      } catch (error) {
         console.log(error)
-        return res.statuts(500).send({message : `Something Went Wrong`})
+        return res.statuts(500).send({message : `Something Went Wrong`, status : 0})
      }
 }
 
@@ -108,21 +108,21 @@ exports.deleteUser = async (req,res) =>{
     const {u_ID} = req.body
     try {
         if (!u_ID) {
-            return res.status(400).send({message: `User ID is Missing`})
+            return res.status(400).send({message: `User ID is Missing` , status : 0})
         }
         const checkUserSQL = `SELECT * FROM users WHERE u_ID = ?`
         const [checkUserResult] = await conn.query(checkUserSQL,u_ID)
         if (checkUserResult.length === 0) {
-            return res.status(404).send({message : `Unknow User ID : ${u_ID}`})
+            return res.status(404).send({message : `Unknow User ID : ${u_ID}` , status : 0})
         }
         const deleteUserSQL = `DELETE FROM users WHERE u_ID = ?`
         const [deleteUserResult] = await conn.query(deleteUserSQL,u_ID)
         if (deleteUserResult.affectedRows === 0) {
-            return res.status(400).send({message : `Delete User ID ${u_ID} Unsuccessfully`})
+            return res.status(400).send({message : `Delete User ID ${u_ID} Unsuccessfully` , status : 0})
         }
-         return res.status(200).send({message : `Delete User ID ${u_ID} Successfully`})
+         return res.status(200).send({message : `Delete User ID ${u_ID} Successfully` , status : 1})
     } catch (error) {
         console.log(error)
-        return res.statuts(500).send({message : `Something Went Wrong`})
+        return res.statuts(500).send({message : `Something Went Wrong` , status : 0})
     }
 }
