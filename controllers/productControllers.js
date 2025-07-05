@@ -56,7 +56,7 @@ exports.getProductID = async (req,res)=>{
 
 exports.updateProduct = async (req,res)=>{
     const { p_ID,p_Name,p_Detail,p_Price,c_ID} = req.body
-    console.log(1)
+    const io =req.app.get('io')
     try {
         if (!p_ID || !p_Name || !p_Detail || p_Price == null || p_Price == undefined || c_ID == null || c_ID == undefined) {
             return res.status(400).send({message : 'Please Enter All Data', status : 0})
@@ -79,6 +79,7 @@ exports.updateProduct = async (req,res)=>{
         if (updateResult.affectedRows === 0) {
             return res.status(400).send({message : `Update Product ID : ${p_ID} Unsuccessfully` , status : 0})
         }
+        io.emit('refreshProduct')
         return res.status(200).send({message : `Update Product ID : ${p_ID} Successfully`, status : 1})
     } catch (error) {
         console.log(error)
