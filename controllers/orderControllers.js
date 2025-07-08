@@ -14,6 +14,7 @@ exports.getallOrder = async (req, res)=>{
         }
         const data = orderResult
         return res.status(200).send({message : "Select Order Data Successfully" , data , status : 1})
+        
     } catch (error) {
         console.log(error)
         return res.status(500).send({ message : "Somethings Went Wrong" , status : 0})
@@ -63,7 +64,7 @@ exports.addOrder = async (req,res) => {
     const {cart,u_ID,o_endDate} = req.body
     const io = req.app.get('io')
     try {
-        if(!u_ID ||  o_endDate) {
+        if(!u_ID ||  !o_endDate) {
             return res.status(400).send({message : `User ID is Missing` , status : 0})
         }
         const orderSQL = `INSERT INTO orders ( u_ID,o_date,o_endDate ) VALUE ( ?, CURRENT_TIMESTAMP,? ) `
@@ -87,18 +88,49 @@ exports.addOrder = async (req,res) => {
     }
 }
 
+
+
+exports.updateOrder = async (req,res) => {
+    const {cart,o_ID,o_endDate} = req.body
+    const io = req.app.get('io')
+    try {
+        if(!o_endDate) {
+            return res.status(400).send({message : `User ID is Missing` , status : 0})
+        }
+        for ( const item of cart) {
+            const orderItemSQL = `UPDATE ordersitems  SET i_Amount = ?  WHERE i_ID = ? `
+            const [orderItemResult] = await conn.query(orderItemSQL,[item.i_Amount,item.i_ID])
+            if (orderItemResult.affectedRows === 0) {
+                return res.status(400).send({message : `Can't Update Order items` , status : 0})
+            }
+        }
+
+        const orderSQL = `UPDATE orders  SET o_endDate = ?  WHERE o_ID = ? `
+            const [orderResult] = await conn.query(orderSQL,[o_endDate,o_ID])
+            if (orderResult.affectedRows === 0) {
+                return res.status(400).send({message : `Can't Update Order ` , status : 0})
+        }
+        io.emit('refreshOrders')
+        return res.status(201).send({message : `Update Order Items Successfully` , status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
+    }
+}
+
 exports.getdateEnd = async (req,res)=>{
     const {o_ID} = req.params
     try {
         if (!o_ID){
             return res.status(400).send({message : `Order ID is Missing`})
         }
-        const selectdateEndSQL = 'SELECT o_endDate FROM orders WHERE o_ID = ?'
+        const selectdateEndSQL = 'SELECT o_endDate,o_ID FROM orders WHERE o_ID = ?'
         const [resultdateEnd] = await conn.query(selectdateEndSQL,[o_ID])
         if(resultdateEnd.length === 0){
             return res.status(404).send({message: `Unknow Order ID : ${o_ID}`})
         }
-        return  res.status(200).send({message : `Update Order ID ${o_ID}` , status : 1})
+        const  data = resultdateEnd 
+        return  res.status(200).send({message : `Select success Order ID ${o_ID}`,data, status : 1})
     } catch (error) {
         console.log(error)
         return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
