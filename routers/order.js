@@ -6,4 +6,7 @@ const authMiddlewere = require('../middleware/auth')
 router.get('/', orderController.getallOrder)
 router.post('/addOrder',validateMiddlewere.validateToken,authMiddlewere.authVerify,orderController.addOrder)
 router.patch('/updateStatusOrder',validateMiddlewere.validateToken,orderController.updateStatusOrder)
+router.delete('/deleteOrder/:o_ID',validateMiddlewere.validateToken,orderController.deleteOrders)
+router.get(`/ordersitems/:o_ID`,validateMiddlewere.validateToken,orderController.orderitems)
+router.get('/getdateEnd/:o_ID',validateMiddlewere.validateToken,orderController.getdateEnd)
 module.exports = router

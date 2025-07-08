@@ -7,7 +7,17 @@ exports.editProfile = async (req,res)=>{
 }
 
 exports.getUser = async (req,res)=>{
-   const user = req.userName
-   console.log('user'  , user)
-   return res.status(200).send({message: 'user Data here' , status : 1})
+   try {
+      const selectSQL = `SELECT u_ID,u_userName FROM users`
+      const [result] = await conn.query(selectSQL,[])
+      if (result.length ===0) {
+         return res.status(404).send({message : `No user Data`,status : 0})
+      }
+      const data = result
+      return res.status(200).send({message : `Select All User Data Successfully` , data ,status : 1})
+   } catch (error) {
+      console.log(error)
+      return res.status(500).send({message : `Something Went Wrongs`})
+   }
 }
+

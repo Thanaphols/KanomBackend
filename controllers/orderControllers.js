@@ -19,18 +19,33 @@ exports.getallOrder = async (req, res)=>{
         return res.status(500).send({ message : "Somethings Went Wrong" , status : 0})
     }
 }
-
+exports.orderitems = async (req,res)=>{
+    const {o_ID} = req.params
+    try {
+        if(!o_ID) {
+            return res.status(400).send({message : `Order ID is Missing ` , status : 0})
+        }
+         const selectOrdersitemsSQL = `SELECT ordersitems.i_ID,ordersitems.i_Amount, product.p_ID,product.p_Name FROM ordersitems 
+         INNER JOIN product ON product.p_ID = ordersitems.p_ID WHERE o_ID = ?`
+            const [resultOrdersitems] = await conn.query(selectOrdersitemsSQL,[o_ID])
+        if( resultOrdersitems.length === 0){
+            return res.status(404).send({message : `No Items in Order ID ${o_ID}`, status : 0})
+        }
+        const data = resultOrdersitems
+        return res.status(200).send({message : `Select Order Detail ID : ${o_ID} Successfully` ,data, status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({ message : "Somethings Went Wrong" , status : 0})
+    }
+}
 exports.orderDetail = async (req,res)=>{
     const {o_ID} = req.param 
     try {
         if(!o_ID) {
             return res.status(400).send({message : `Order ID is Missing ` , status : 0})
         }
-         const selectSQL = `SELECT orders.o_ID ,users.u_userName,usersdetail.de_tel,o_Status,o_image,ordersitems.i_Amount,ordersitems.i_Price,product.p_Name,product.p_Detail,product.p_Img, orders.o_date,orders.o_endDate,usersdetail.latitude,usersdetail.longitude FROM orders 
-                        INNER JOIN ordersitems ON ordersitems.o_ID = orders.o_ID 
-                        INNER JOIN product ON product.p_ID = ordersitems.p_ID
-                        INNER JOIN users ON users.u_ID = orders.u_ID
-                        INNER JOIN usersdetail ON users.u_ID = usersdetail.u_ID`
+         const selectSQL = `SELECT ordersitems.i_Amount, product.p_ID,product.p_Name FROM ordersitems 
+         INNER JOIN product ON product.p_ID = ordersitems.p_ID WHERE o_ID = ?`
 
           return res.status(200).send({message : `Select Order Detail ID : ${o_ID} Successfully` , status : 1})
     } catch (error) {
@@ -45,26 +60,26 @@ exports.getOrderID= (req, res)=>{
 }
 
 exports.addOrder = async (req,res) => {
+    const {cart,u_ID,o_endDate} = req.body
+    const io = req.app.get('io')
     try {
-        // console.log(req.body.cart)
-        const {cart,u_ID} = req.body
-        if(!u_ID ) {
+        if(!u_ID ||  o_endDate) {
             return res.status(400).send({message : `User ID is Missing` , status : 0})
         }
-        const orderSQL = `INSERT INTO orders ( u_ID,o_date ) VALUE ( ?, CURRENT_TIMESTAMP ) `
-        const [orderResult] = await conn.query(orderSQL,[u_ID])
+        const orderSQL = `INSERT INTO orders ( u_ID,o_date,o_endDate ) VALUE ( ?, CURRENT_TIMESTAMP,? ) `
+        const [orderResult] = await conn.query(orderSQL,[u_ID,o_endDate])
         if(orderResult.affectedRows === 0) {
             return res.stats(400).send({message : `Can't Insert Order ` , status : 0})
         }
         const o_ID = orderResult.insertId
-        console.log(orderResult)
         for ( const item of cart) {
-            const orderItemSQL = `INSERT INTO ordersitems (o_ID,p_ID,i_Amount,i_Price ) VALUE (?,?,?,?) `
+            const orderItemSQL = `INSERT INTO ordersitems (o_ID,p_ID,i_Amount ) VALUE (?,?,?) `
             const [orderItemResult] = await conn.query(orderItemSQL,[o_ID,item.p_ID,item.p_Amount,item.p_Price])
             if (orderItemResult.affectedRows === 0) {
                 return res.status(400).send({message : `Can't Insert Order items` , status : 0})
             }
         }
+        io.emit('refreshOrders')
         return res.status(201).send({message : `Order Success` , status : 1})
     } catch (error) {
         console.log(error)
@@ -72,12 +87,58 @@ exports.addOrder = async (req,res) => {
     }
 }
 
-exports.updateStatusOrder = (req,res)=>{
+exports.getdateEnd = async (req,res)=>{
+    const {o_ID} = req.params
     try {
-        const {o_ID,o_Status} = req.body
-        
-        console.log(o_Status)
-        return  res.status(200).send({message : `Update Order Status ID ${o_ID}` , status : 1})
+        if (!o_ID){
+            return res.status(400).send({message : `Order ID is Missing`})
+        }
+        const selectdateEndSQL = 'SELECT o_endDate FROM orders WHERE o_ID = ?'
+        const [resultdateEnd] = await conn.query(selectdateEndSQL,[o_ID])
+        if(resultdateEnd.length === 0){
+            return res.status(404).send({message: `Unknow Order ID : ${o_ID}`})
+        }
+        return  res.status(200).send({message : `Update Order ID ${o_ID}` , status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
+    }
+}
+
+exports.updateStatusOrder = async (req,res)=>{
+    const {o_ID} = req.body
+    const io = req.app.get('io')
+    try {
+        const updateStatusSQL = `UPDATE orders SET o_Status = ? WHERE o_ID = ?`
+        const [updateStatusResult] = await conn.query(updateStatusSQL,[1,o_ID])
+        if (updateStatusResult.affectedRows === 0){
+            return res.status(400).send({message: `Can't Update Status Order ID ${o_ID}`})
+        }
+        io.emit('refreshOrders')
+        return  res.status(200).send({message : `Update Order ID ${o_ID}` , status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
+    }
+}
+
+exports.deleteOrders = async (req,res)=>{
+     const {o_ID} = req.params
+     const io =req.app.get('io')
+    try {
+      console.log(o_ID)
+      if(!o_ID) {
+        return res.status(400).send({message : `Order ID is Missing`})
+      }
+      const deleteOrderItemSQL = `DELETE FROM ordersitems WHERE o_ID = ?`
+      const [resultdeleteOrderItem] = await conn.query(deleteOrderItemSQL,[o_ID])
+      const deleteOrderSQL = `DELETE FROM orders WHERE o_ID = ?`
+      const [resultdeleteOrder] = await conn.query(deleteOrderSQL,[o_ID])
+      if (resultdeleteOrder.affectedRows === 0) {
+        return res.status(404).send({message: `Delete Order ID : ${o_ID} Unsuccessfully`})
+      } 
+      io.emit('refreshOrders')
+      return res.status(200).send({message : `Delete Order ID : ${o_ID} Successfully`})
     } catch (error) {
         console.log(error)
         return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
