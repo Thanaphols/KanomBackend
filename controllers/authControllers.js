@@ -126,3 +126,28 @@ exports.deleteUser = async (req,res) =>{
         return res.statuts(500).send({message : `Something Went Wrong` , status : 0})
     }
 }
+
+
+exports.checkLogin = (req,res)=>{
+    const authToken =  req.headers['authorization']
+    //console.log(authToken)
+    try {
+        if(!authToken){
+        return res.status(401).send({message : 'Unknow Token',status : 0})
+    }
+    let token = authToken.split(' ')[1]
+    if(!token){
+        return res.status(403).send({message: 'No token provided',status : 0})
+    }
+    jwt.verify(token, process.env.SECRET_KEY_Token,(err,decode)=>{
+        if(err){
+            return res.status(403).send({message : 'Unauthorized ! Token expire', status : 0})
+        }
+        req.userData = decode
+        return res.status(200).send({message : `Login Success`,status : 1})
+    })
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message: `Something Went Wrong`})
+    }
+}
