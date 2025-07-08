@@ -5,5 +5,5 @@ const validateMiddlewere = require('../middleware/validate')
 const authMiddlewere = require('../middleware/auth')
 router.get('/', orderController.getallOrder)
 router.post('/addOrder',validateMiddlewere.validateToken,authMiddlewere.authVerify,orderController.addOrder)
-
+router.patch('/updateStatusOrder',validateMiddlewere.validateToken,orderController.updateStatusOrder)
 module.exports = router

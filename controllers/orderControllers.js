@@ -2,11 +2,12 @@ const conn = require('../db')
 
 exports.getallOrder = async (req, res)=>{
     try {
-        const orderSQL = `SELECT orders.o_ID ,users.u_userName,usersdetail.de_tel,o_Status,o_image,ordersitems.i_Amount,ordersitems.i_Price,product.p_Name,product.p_Detail,product.p_Img, orders.o_date,orders.o_endDate,usersdetail.latitude,usersdetail.longitude FROM orders 
-                        INNER JOIN ordersitems ON ordersitems.o_ID = orders.o_ID 
-                        INNER JOIN product ON product.p_ID = ordersitems.p_ID
-                        INNER JOIN users ON users.u_ID = orders.u_ID
-                        INNER JOIN usersdetail ON users.u_ID = usersdetail.u_ID`
+        const orderSQL = `SELECT orders.o_ID,orders.o_date,orders.o_endDate ,orders.o_image,orders.o_Status,
+        users.u_userName,
+        usersdetail.de_firstName,usersdetail.de_lastName,usersdetail.de_tel 
+        FROM orders INNER JOIN users ON users.u_ID = orders.u_ID
+        INNER JOIN usersdetail ON usersdetail.u_ID = orders.u_ID
+        `
         const [orderResult] = await conn.query(orderSQL)
         if(orderResult.length === 0 ){
             return res.status(200).send({message : `No Orders Data` , status : 0})
@@ -65,6 +66,18 @@ exports.addOrder = async (req,res) => {
             }
         }
         return res.status(201).send({message : `Order Success` , status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
+    }
+}
+
+exports.updateStatusOrder = (req,res)=>{
+    try {
+        const {o_ID,o_Status} = req.body
+        
+        console.log(o_Status)
+        return  res.status(200).send({message : `Update Order Status ID ${o_ID}` , status : 1})
     } catch (error) {
         console.log(error)
         return res.status(500).send({message : `Somethings Went Wrong` , status : 0})

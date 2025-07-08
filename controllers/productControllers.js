@@ -13,6 +13,7 @@ exports.getallProduct = async (req,res)=>{
 }
 exports.addProduct = async (req, res) => {
     const { p_Name,p_Detail,p_Price,c_ID} = req.body
+    const io =req.app.get('io')
     try {
        if (!p_Name || !p_Detail || p_Price == null || p_Price == undefined || c_ID == null || c_ID == undefined ) {
         return res.status(400).send({message : "Please Enter All Data"})
@@ -28,6 +29,7 @@ exports.addProduct = async (req, res) => {
         if(result.affectedRows === 0) {
             return res.status(401).send( {message: "Can't create Product " , status : 0})
         }
+        io.emit('refreshProduct')
         return res.status(201).send( {  message : "Create Product Success", status : 1})
     } catch (error) {
         console.log(error)
@@ -88,22 +90,25 @@ exports.updateProduct = async (req,res)=>{
 }
 
 exports.deleteProduct = async (req,res) => {
-    const {p_ID} = req.body
+    const {p_ID} = req.params
+    const io =req.app.get('io')
     try {
         if (!p_ID) {
-            return res.status(400).send({message : `Missing Product ID ` , status : 0})
+            return res.status(400).send({message : `Missing Product ID ${p_ID}` , status : 0})
         }
-        const checkSQL = `SELECT * FROM pruduct WHERE p_ID = ?`
+        const checkSQL = `SELECT * FROM product WHERE p_ID = ?`
         const [checkResult] = await conn.query(checkSQL,[p_ID])
         if (checkResult.length === 0) {
             return res.status(404).send({message : `Unknow Product ID : ${p_ID}`, status : 0})
         }
+
         const deleteSQL = `DELETE FROM product WHERE p_ID = ?`
         const [deleteResult] = await conn.query(deleteSQL,[p_ID])
         if (deleteResult.affectedRows === 0) {
             return res.status(400).send({message : `Delete Product ID : ${p_ID} Unsuccessfully`, status : 0})
         }
-        return res.status(400).send({message : `Delete Product ID : ${p_ID} Successfully`, status : 1})
+        io.emit('refreshProduct')
+        return res.status(200).send({message : `Delete Product ID : ${p_ID} Successfully`, status : 1})
     } catch (error) {
         console.log(error)
         return res.status(500).send({message : `Something Went Wrong`, status : 0})
