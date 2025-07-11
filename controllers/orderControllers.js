@@ -122,12 +122,12 @@ exports.getdateEnd = async (req,res)=>{
     const {o_ID} = req.params
     try {
         if (!o_ID){
-            return res.status(400).send({message : `Order ID is Missing`})
+            return res.status(400).send({message : `Order ID is Missing`, status : 0})
         }
         const selectdateEndSQL = 'SELECT o_endDate,o_ID FROM orders WHERE o_ID = ?'
         const [resultdateEnd] = await conn.query(selectdateEndSQL,[o_ID])
         if(resultdateEnd.length === 0){
-            return res.status(404).send({message: `Unknow Order ID : ${o_ID}`})
+            return res.status(404).send({message: `Unknow Order ID : ${o_ID} `, status : 0})
         }
         const  data = resultdateEnd 
         return  res.status(200).send({message : `Select success Order ID ${o_ID}`,data, status : 1})
@@ -144,7 +144,7 @@ exports.updateStatusOrder = async (req,res)=>{
         const updateStatusSQL = `UPDATE orders SET o_Status = ? WHERE o_ID = ?`
         const [updateStatusResult] = await conn.query(updateStatusSQL,[1,o_ID])
         if (updateStatusResult.affectedRows === 0){
-            return res.status(400).send({message: `Can't Update Status Order ID ${o_ID}`})
+            return res.status(400).send({message: `Can't Update Status Order ID ${o_ID}`, status : 0})
         }
         io.emit('refreshOrders')
         return  res.status(200).send({message : `Update Order ID ${o_ID}` , status : 1})
@@ -160,17 +160,17 @@ exports.deleteOrders = async (req,res)=>{
     try {
       console.log(o_ID)
       if(!o_ID) {
-        return res.status(400).send({message : `Order ID is Missing`})
+        return res.status(400).send({message : `Order ID is Missing`, status : 0})
       }
       const deleteOrderItemSQL = `DELETE FROM ordersitems WHERE o_ID = ?`
       const [resultdeleteOrderItem] = await conn.query(deleteOrderItemSQL,[o_ID])
       const deleteOrderSQL = `DELETE FROM orders WHERE o_ID = ?`
       const [resultdeleteOrder] = await conn.query(deleteOrderSQL,[o_ID])
       if (resultdeleteOrder.affectedRows === 0) {
-        return res.status(404).send({message: `Delete Order ID : ${o_ID} Unsuccessfully`})
+        return res.status(404).send({message: `Delete Order ID : ${o_ID} Unsuccessfully`, status : 0})
       } 
       io.emit('refreshOrders')
-      return res.status(200).send({message : `Delete Order ID : ${o_ID} Successfully`})
+      return res.status(200).send({message : `Delete Order ID : ${o_ID} Successfully`, status : 1})
     } catch (error) {
         console.log(error)
         return res.status(500).send({message : `Somethings Went Wrong` , status : 0})
