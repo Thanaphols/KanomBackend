@@ -2,7 +2,7 @@ const conn = require('../db')
 
 exports.allCategory = async (req,res)=>{
     try {
-        const [result] = await conn.query(" SELECT * FROM category ")
+        const [result] = await conn.query(" SELECT * FROM category ORDER BY c_ID ASC")
         if(result.length === 0) {
             return res.status(400).send({message : "No Data" , status : 0})
         }

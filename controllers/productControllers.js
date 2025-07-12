@@ -1,8 +1,8 @@
 const conn = require('../db')
 exports.getallProduct = async (req,res)=>{
     try {
-    const SQL = `SELECT  product.p_ID,product.c_ID,product.p_Name,product.p_Detail,product.p_Price,product.p_Amount,p_Img,category.c_Name 
-    FROM product INNER JOIN category ON product.c_ID = category.c_ID ORDER BY p_ID `
+    const SQL = `SELECT  product.p_ID,product.c_ID,product.p_Name,product.p_Detail,product.p_Price,p_Img,category.c_Name 
+    FROM product INNER JOIN category ON product.c_ID = category.c_ID ORDER BY p_ID ASC`
     const [result] = await conn.query(SQL)
     const data = result
         return res.status(200).send({message: "Select Success", data , status : 1})
