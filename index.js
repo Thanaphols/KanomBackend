@@ -5,6 +5,15 @@ const cors = require('cors')
 require('dotenv').config();
 const http = require('http')
 const {Server} = require('socket.io')
+const  rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+	windowMs: 0.3 * 60 * 1000, 
+	limit: 300, 
+	standardHeaders: 'draft-8', 
+	legacyHeaders: false, 
+	ipv6Subnet: 56,
+	
+})
 const PORT = process.env.app_port;
 const server = http.createServer(app);
 const io = new Server(server , {
@@ -19,6 +28,7 @@ io.on('connection', (socket) => {
   });
 })
 app.use(bodyParser.json({ limit: "50mb" }));
+app.use(limiter)
 
 app.use(
     bodyParser.urlencoded({

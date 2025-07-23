@@ -9,9 +9,6 @@ exports.getallOrder = async (req, res)=>{
         INNER JOIN usersdetail ON usersdetail.u_ID = orders.u_ID ORDER BY orders.o_ID ASC
         `
         const [orderResult] = await conn.query(orderSQL)
-        if(orderResult.length === 0 ){
-            return res.status(200).send({message : `No Orders Data` , status : 0})
-        }
         const data = orderResult
         return res.status(200).send({message : "Select Order Data Successfully" , data , status : 1})
         
@@ -47,7 +44,7 @@ exports.orderDetail = async (req,res)=>{
         }
          const selectSQL = `SELECT ordersitems.i_Amount, product.p_ID,product.p_Name FROM ordersitems 
          INNER JOIN product ON product.p_ID = ordersitems.p_ID WHERE o_ID = ?`
-
+         const [resultOrdersitems] = await conn.query(selectOrdersitemsSQL,[o_ID])
           return res.status(200).send({message : `Select Order Detail ID : ${o_ID} Successfully` , status : 1})
     } catch (error) {
         console.log(error)
@@ -164,9 +161,7 @@ exports.deleteOrders = async (req,res)=>{
       }
       const deleteOrderItemSQL = `DELETE FROM ordersitems WHERE o_ID = ?`
       const [resultdeleteOrderItem] = await conn.query(deleteOrderItemSQL,[o_ID])
-      if (resultdeleteOrder.affectedRows === 0){
-        return res.status(404).send({message: `Delete Order Items Unsuccessfully`, status : 0})
-      }
+      
       const deleteOrderSQL = `DELETE FROM orders WHERE o_ID = ?`
       const [resultdeleteOrder] = await conn.query(deleteOrderSQL,[o_ID])
       if (resultdeleteOrder.affectedRows === 0) {

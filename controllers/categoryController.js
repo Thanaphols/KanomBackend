@@ -3,9 +3,6 @@ const conn = require('../db')
 exports.allCategory = async (req,res)=>{
     try {
         const [result] = await conn.query(" SELECT * FROM category ORDER BY c_ID ASC")
-        if(result.length === 0) {
-            return res.status(400).send({message : "No Data" , status : 0})
-        }
         const data = result
         return res.status(200).send({message : "Select All Data success" , data : data  , status : 1})
     } catch (error) {
