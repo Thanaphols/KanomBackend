@@ -29,7 +29,6 @@ io.on('connection', (socket) => {
 })
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(limiter)
-
 app.use(
     bodyParser.urlencoded({
       limit: "50mb",
@@ -42,7 +41,7 @@ app.use(
   })
     
   );
-
+app.set('trust proxy', 1);
 //Routers
 const RouterUsers = require('./routers/user')
 const RouterProduct = require('./routers/product')
@@ -50,15 +49,22 @@ const RouterOrder = require('./routers/order')
 const RouterCategory = require('./routers/category')
 const RouterAuth = require('./routers/auth');
 const RouterCart = require('./routers/cart');
+const RouterCost = require('./routers/cost');
+const Routerfinancials = require('./routers/financials');
+const RouterStore = require('./routers/store');
+const RouterDashboard = require('./routers/dashboard');
 const { Socket } = require('dgram');
 const apiRouter = express.Router();
 apiRouter.use('/cart',RouterCart)
 apiRouter.use('/users',RouterUsers)
 apiRouter.use('/products',RouterProduct)
 apiRouter.use('/orders',RouterOrder)
-apiRouter.use('/categorys',RouterCategory)
+apiRouter.use('/category',RouterCategory)
+apiRouter.use('/cost',RouterCost)
+apiRouter.use('/finan',Routerfinancials)
+apiRouter.use('/stores',RouterStore)
 apiRouter.use('/auth',RouterAuth)
-
+apiRouter.use('/dashboard',RouterDashboard)
 app.use('/api', apiRouter)
 
 app.get('/', (req, res)=>{

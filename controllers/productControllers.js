@@ -49,7 +49,7 @@ exports.getProductID = async (req,res)=>{
             return res.status(401).send({message : 'Unknow Product ID : ' + p_id , status : 0})
         }
         const data = result[0]
-        return res.status(201).send({message : 'Select Product ID : ' + p_id , data : data , status : 1})
+        return res.status(200).send({message : 'Select Product ID : ' + p_id , data : data , status : 1})
     } catch (error) {
         console.log(error)
         return res.status(400).send({message: 'Something Went Wrong', status : 0})

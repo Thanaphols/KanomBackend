@@ -4,7 +4,7 @@ exports.getallOrder = async (req, res)=>{
     try {
         const orderSQL = `SELECT orders.o_ID,orders.o_date,orders.o_endDate ,orders.o_image,orders.o_Status,
         users.u_userName,
-        usersdetail.de_firstName,usersdetail.de_lastName,usersdetail.de_tel 
+        usersdetail.de_tel 
         FROM orders INNER JOIN users ON users.u_ID = orders.u_ID
         INNER JOIN usersdetail ON usersdetail.u_ID = orders.u_ID ORDER BY orders.o_ID ASC
         `
