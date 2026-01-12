@@ -52,9 +52,39 @@ exports.orderDetail = async (req,res)=>{
     }
 }
 
-exports.getOrderID= (req, res)=>{
-    const id = req.body.o_id
-    res.send("All order" + id)
+exports.getOrderID= async (req, res)=>{
+    const {o_ID} = req.body
+    try {
+        if (!o_ID) {
+            return res.status(400).send({ 
+                message: "Please provide Order ID (o_ID)", 
+                status: 0 
+            });
+        }
+        const sql = ` SELECT  o.*,u.u_userName,  ud.de_tel         
+            FROM orders o JOIN users u ON o.u_ID = u.u_ID
+            JOIN  usersdetail ud ON u.u_ID = ud.u_ID
+            WHERE  o.o_ID = ?
+        `;
+        const [result] = await conn.query(sql, [o_ID]);
+        if (result.length === 0) {
+            return res.status(404).send({ 
+                message: `Order ID ${o_ID} not found`, 
+                status: 0 
+            });
+        }
+        return res.status(200).send({ 
+            message: "Get Order Detail Success", 
+            data: result[0], 
+            status: 1 
+        });
+    } catch (error) {
+        console.error("Get Order Error:", error);
+        return res.status(500).send({ 
+            message: "Something Went Wrong", 
+            status: 0 
+        });
+    }
 }
 
 exports.addOrder = async (req,res) => {
