@@ -37,7 +37,7 @@ exports.orderitems = async (req,res)=>{
     }
 }
 exports.orderDetail = async (req,res)=>{
-    const {o_ID} = req.param 
+    const {o_ID} = req.params 
     try {
         if(!o_ID) {
             return res.status(400).send({message : `Order ID is Missing ` , status : 0})
@@ -53,7 +53,7 @@ exports.orderDetail = async (req,res)=>{
 }
 
 exports.getOrderID= async (req, res)=>{
-    const {o_ID} = req.param
+    const {o_ID} = req.params
     try {
         if (!o_ID) {
             return res.status(400).send({ 
