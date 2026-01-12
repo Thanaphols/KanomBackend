@@ -53,7 +53,7 @@ exports.orderDetail = async (req,res)=>{
 }
 
 exports.getOrderID= async (req, res)=>{
-    const {o_ID} = req.body
+    const {o_ID} = req.param
     try {
         if (!o_ID) {
             return res.status(400).send({ 
