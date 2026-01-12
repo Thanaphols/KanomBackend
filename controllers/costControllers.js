@@ -75,7 +75,7 @@ exports.editCost = async (req, res) => {
 
 
 exports.deleteCost = async (req, res) => {
-    const { co_ID } = req.body; // รับค่า co_ID จาก body ตามที่ระบุ
+    const { co_ID } = req.params; // รับค่า co_ID จาก body ตามที่ระบุ
     const io = req.app.get('io'); 
 
     try {
