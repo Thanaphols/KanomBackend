@@ -50,40 +50,53 @@ exports.addCost = async (req, res) => {
 };
 
 exports.editCost = async (req, res) => {
-    const { c_ID, co_Name, co_Unit, co_Price, co_detail } = req.body;
+    const { co_ID, co_Name, co_Unit, co_Price, co_detail } = req.body;
     const io = req.app.get('io'); // ดึง Socket.io instance มาใช้
-
     try {
-        if (!c_ID) {
+        if (!co_ID) {
             return res.status(400).json({ message: 'Error Please Enter Data' });
         }
-        const sql = `
-            UPDATE costs 
-            SET co_Name = ?, co_Unit = ?, co_Price = ?, co_detail = ?
-            WHERE c_ID = ?
+        const sql = `  UPDATE costs    SET co_Name = ?, co_Unit = ?, co_Price = ?, co_detail = ?
+            WHERE co_ID = ?
         `;
-        
-        // รูปแบบการเรียกใช้ขึ้นอยู่กับ Library ที่ใช้ (mysql2/promise แนะนำแบบนี้)
-        const [result] = await db.query(sql, [co_Name, co_Unit, co_Price, co_detail, c_ID]);
-
-        // เช็คว่าหา ID เจอและอัปเดตได้จริงไหม
+        const [result] = await conn.query(sql, [co_Name, co_Unit, co_Price, co_detail, co_ID]);
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: 'Cost not found or ID incorrect' });
+            return res.status(404).json({ status: 0,message: 'Cost not found or ID incorrect' });
         }
-
-        // 3. Real-time Trigger: ส่งข้อมูลที่แก้แล้วผ่าน Socket.io
-        // ใครที่ listen event ชื่อ 'cost_update' อยู่จะได้ข้อมูลชุดใหม่ทันที
-        const updatedData = { c_ID, co_Name, co_Unit, co_Price, co_detail };
+        const data = result[0];
         io.emit('cost_update', updatedData);
-
-        // 4. Response กลับไปหาคนกดแก้ไข
-        res.status(200).json({
-            message: 'Update successful',
-            data: updatedData
-        });
+       return res.status(200).json({  message: 'Update successful', status: 1 , data: data});
 
     } catch (error) {
         console.error('Update Error:', error);
-        res.status(500).json({ message: 'Server Error', error: error.message });
+       return res.status(500).json({ status: 0,message: 'Server Error', error: error.message });
+    }
+};
+
+
+exports.deleteCost = async (req, res) => {
+    const { co_ID } = req.body; // รับค่า co_ID จาก body ตามที่ระบุ
+    const io = req.app.get('io'); 
+
+    try {
+        if (!co_ID) {
+            return res.status(400).json({status: 0, message: 'Error: Missing co_ID' });
+        }
+
+        const sql = `DELETE FROM costs WHERE co_ID = ?`; 
+        
+        const [result] = await conn.query(sql, [co_ID]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Cost not found or already deleted', status: 0 });
+        }
+        io.emit('cost_delete', { co_ID });
+        res.status(200).json({
+            message: 'Delete successful',
+            status: 1
+        });
+
+    } catch (error) {
+        console.error('Delete Error:', error);
+        res.status(500).json({ status: 0,message: 'Server Error', error: error.message });
     }
 };
