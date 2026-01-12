@@ -54,7 +54,7 @@ exports.login = async (req,res)=>{
             u_role : dataUser.u_role
         }
         const secret = process.env.SECRET_KEY_Token
-        const options = {expiresIn: '1h'}
+        const options = {expiresIn: '3h'}
         const token = jwt.sign(userData,secret,options)
         return res.status(200).send({message: 'Login Success ', token ,userData , status : 1})
     } catch (error) {
