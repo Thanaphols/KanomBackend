@@ -64,7 +64,7 @@ exports.editCost = async (req, res) => {
             return res.status(404).json({ status: 0,message: 'Cost not found or ID incorrect' });
         }
         const data = result[0];
-        io.emit('cost_update', updatedData);
+        io.emit('cost_update');
        return res.status(200).json({  message: 'Update successful', status: 1 , data: data});
 
     } catch (error) {
