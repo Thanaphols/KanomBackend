@@ -80,3 +80,5 @@ server.listen(PORT, (error) =>{
     }
 });
 
+app.use('/uploads/products', express.static('uploads/products'));
+
