@@ -77,7 +77,7 @@ exports.checkUser = async (req,res) =>{
         return res.status(200).send({message : `A username can be used`, status : 1})
     } catch (error) {
         console.log(error)
-        return res.statuts(500).send({message : `Something Went Wrong`, status : 0})
+        return res.status(500).send({message : `Something Went Wrong`, status : 0})
     }
 }
 
