@@ -48,12 +48,96 @@ exports.orderDetail = async (req, res) => {
         return res.status(200).send({ message: `Select Order Detail ID : ${o_ID} Successfully`, status: 1 })
     } catch (error) {
         console.log(error)
-        return res.status(500).send({ message: "Somethings Went Wrong", status: 0 })
+        return res.status(500).send({ message : "Somethings Went Wrong" , status : 0})
     }
 }
 
-exports.getOrderID = async (req, res) => {
-    const { o_ID } = req.params
+exports.getUserOrders = async (req, res) => {
+    const u_ID = req.userData.u_ID
+    try {
+        // Validation เบื้องต้น
+        if (!u_ID) {
+            return res.status(400).send({ 
+                message: "Please provide User ID (u_ID)", 
+                status: 0 
+            });
+        }
+
+        // 2. SQL Query: ดึง Order + รายละเอียดสินค้า (Items) + ชื่อสินค้า
+        // สมมติว่า:
+        // - ตารางรายละเอียดชื่อ 'items' (เก็บ i_Amount, i_Price, p_ID, o_ID)
+        // - ตารางสินค้าชื่อ 'product' (เก็บ p_Name)
+        const sql = `
+            SELECT 
+                o.o_ID, 
+                o.o_date, 
+                o.o_endDate,
+                i.p_ID,
+                p.p_Name,
+                p.p_Price,
+                i.i_Amount
+            FROM orders o
+            JOIN ordersitems i ON o.o_ID = i.o_ID
+            JOIN product p ON i.p_ID = p.p_ID
+            WHERE o.u_ID = ?
+            ORDER BY o.o_date DESC
+        `;
+
+        const [rows] = await conn.query(sql, [u_ID]);
+
+        if (rows.length === 0) {
+            return res.status(200).send({ 
+                message: "No orders found for this user", 
+                data: [], 
+                status: 1 
+            });
+        }
+
+        // 3. Data Transformation (จัดกลุ่มข้อมูล)
+        // แปลงข้อมูลดิบที่ได้จาก SQL (Flat Data) ให้เป็น Nested JSON
+        const ordersMap = new Map();
+
+        rows.forEach(row => {
+            // ถ้ายังไม่มี o_ID นี้ใน Map ให้สร้าง Object แม่แบบขึ้นมา
+            if (!ordersMap.has(row.o_ID)) {
+                ordersMap.set(row.o_ID, {
+                    o_ID: row.o_ID,
+                    o_date: row.o_date,
+                    o_endDate: row.o_endDate,
+                    items: [] // สร้าง array ว่างรอไว้ใส่สินค้า
+                });
+            }
+
+            // ยัดรายการสินค้า (Item) ใส่เข้าไปใน array 'items' ของ o_ID นั้นๆ
+            ordersMap.get(row.o_ID).items.push({
+                p_ID: row.p_ID,
+                p_Name: row.p_Name,
+                i_Amount: row.i_Amount,
+                i_total: row.p_Price* row.i_Amount
+            });
+        });
+
+        // แปลง Map values กลับเป็น Array เพื่อส่ง Response
+        const formattedData = Array.from(ordersMap.values());
+
+        // 4. ส่งค่ากลับ
+        return res.status(200).send({ 
+            message: "Get User Orders Success", 
+            data: formattedData, 
+            status: 1 
+        });
+
+    } catch (error) {
+        console.error("Get User Orders Error:", error);
+        return res.status(500).send({ 
+            message: "Something Went Wrong", 
+            status: 0 
+        });
+    }
+}
+
+exports.getOrderID= async (req, res)=>{
+    const {o_ID} = req.params
     try {
         if (!o_ID) {
             return res.status(400).send({
