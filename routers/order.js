@@ -12,4 +12,5 @@ router.get(`/ordersitems/:o_ID`,validateMiddlewere.validateToken,orderController
 router.get('/getdateEnd/:o_ID',validateMiddlewere.validateToken,orderController.getdateEnd)
 router.patch(`/updateOrder`,validateMiddlewere.validateToken,orderController.updateOrder)
 router.get('/sumPrice/:o_ID',validateMiddlewere.validateToken,orderController.sumPrice)
+router.get('/getUserOrders',validateMiddlewere.validateToken,orderController.getUserOrders)
 module.exports = router
