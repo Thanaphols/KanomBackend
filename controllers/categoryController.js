@@ -29,6 +29,22 @@ exports.selectCategory = async (req,res)=>{
     }
 }
 
+exports.getCategoryWithCount = async (req, res) => {
+    try {
+        // ดึงหมวดหมู่พร้อมนับจำนวนสินค้าที่อยู่ในแต่ละหมวด
+        const SQL = `
+            SELECT c.c_ID, c.c_Name, COUNT(p.p_ID) as productCount 
+            FROM category c
+            LEFT JOIN product p ON c.c_ID = p.c_ID
+            GROUP BY c.c_ID
+        `;
+        const [result] = await conn.query(SQL);
+        return res.status(200).send({ message: "Success", data: result, status: 1 });
+    } catch (error) {
+        return res.status(500).send({ message: "Error", status: 0 });
+    }
+};
+
 exports.addCategory =  async ( req,res) =>{
     const {c_Name} = req.body
     try {
@@ -98,4 +114,6 @@ exports.deleteCategory = async (req, res) =>{
         console.log(error)
         return res.status(500).send({message : "Something Went Wrong" , status : 0})
     }
+
+    
 }

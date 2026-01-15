@@ -3,7 +3,7 @@ exports.addCart = async (req,res) => {
     const {cart,o_endDate} = req.body
     const u_ID = req.userData.u_ID
     try {
-        if(!u_ID ||  !o_endDate) {
+        if(!u_ID) {
             return res.status(400).send({message : `User ID is Missing` , status : 0})
         }
         const orderSQL = `INSERT INTO orders ( u_ID,o_date,o_endDate ) VALUE ( ?, CURRENT_TIMESTAMP,? ) `
