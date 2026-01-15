@@ -76,13 +76,11 @@ exports.getFinan = async (req,res)=>{
                 }
             }
         });
-
-        // 4. จัดกลุ่มข้อมูลรายรับ (Orders)
         const incomeMap = new Map();
         incomesRaw.forEach(row => {
             if (!incomeMap.has(row.o_ID)) {
                 incomeMap.set(row.o_ID, {
-                    id: `O${String(row.o_ID).padStart(3, '0')}`, // Format O001
+                    id: `${row.o_ID}`, // Format O001
                     type: 'รายรับ', // หรือ 'คำสั่งซื้อ'
                     date: formatDateThai(row.o_date),
                     rawDate: new Date(row.o_date),
@@ -92,24 +90,18 @@ exports.getFinan = async (req,res)=>{
                     viewData: []
                 });
             }
-
             const inc = incomeMap.get(row.o_ID);
-
-            // เพิ่มรายการย่อย
             if (row.i_ID) {
                 const qty = parseFloat(row.i_Amount) || 0;
                 const price = parseFloat(row.p_Price) || 0;
                 const itemTotal = qty * price;
-                
                 inc.amount += itemTotal;
-
                 inc.viewData.push({
                     label: row.p_Name || 'สินค้า',
                     amount: itemTotal,
                     qty: qty,
                     type: 'สินค้า'
                 });
-
                 if (inc.viewData.length === 1) {
                     inc.details = `ขาย${row.p_Name}`;
                 } else if (inc.viewData.length === 2) {
@@ -117,22 +109,17 @@ exports.getFinan = async (req,res)=>{
                 }
             }
         });
-
-        // 5. รวมข้อมูลทั้งสองส่วนและเรียงตามวันที่ล่าสุด
         const allTransactions = [
             ...Array.from(expenseMap.values()),
             ...Array.from(incomeMap.values())
-        ].sort((a, b) => b.rawDate - a.rawDate); // เรียงจากล่าสุดไปเก่าสุด
-
-        // ลบ field rawDate ออกก่อนส่ง response
+        ].sort((a, b) => b.rawDate - a.rawDate);
         const finalResult = allTransactions.map(({ rawDate, ...rest }) => rest);
-
+        console.log(finalResult);
         return res.status(200).send({
             message: "ดึงข้อมูลธุรกรรมสำเร็จ",
             status: 1,
             data: finalResult
         });
-
     } catch (error) {
         console.error("Error getting all transactions:", error);
         return res.status(500).send({
