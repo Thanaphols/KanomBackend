@@ -8,4 +8,5 @@ router.post('/check',authController.checkUser)
 router.patch('/updateProfile',validateMiddlewere.validateToken,authController.updateProfile)
 router.delete('/deleteUser',validateMiddlewere.validateToken, authController.deleteUser)
 router.get('/checkLogin',authController.checkLogin)
+router.post('/line-auth', authController.handleLineAuth);
 module.exports = router

@@ -152,3 +152,77 @@ exports.checkLogin = (req, res) => {
         return res.status(500).send({ message: `Something Went Wrong` })
     }
 }
+
+exports.handleLineAuth = async (req, res) => {
+    const {
+        u_line_id,
+        u_userName,
+        u_passWord,
+        de_tel,
+        de_address,
+        latitude,
+        longitude
+    } = req.body;
+
+    try {
+        const [existingUser] = await conn.query(
+            "SELECT u_ID, u_role, u_userName FROM users WHERE u_line_id = ?",
+            [u_line_id]
+        );
+        if (existingUser.length > 0) {
+            const user = existingUser[0];
+            const token = jwt.sign(
+                { u_ID: user.u_ID, u_role: user.u_role },
+                process.env.SECRET_KEY_Token,
+                { expiresIn: '1d' }
+            );
+            return res.status(200).json({
+                status: 1,
+                message: "เข้าสู่ระบบสำเร็จ",
+                token: token,
+                userData: {
+                    u_ID: user.u_ID,
+                    u_userName: user.u_userName,
+                    u_role: user.u_role
+                }
+            });
+        }
+        if (!u_passWord || !de_tel) {
+            return res.status(200).json({
+                status: 2,
+                message: "ต้องกรอกข้อมูลเพิ่มเติมเพื่อลงทะเบียน"
+            });
+        }
+        try {
+            await conn.query('START TRANSACTION');
+            const hashedPwd = await bcrypt.hash(u_passWord, 10);
+            const [userResult] = await conn.query(
+                "INSERT INTO users (u_line_id, u_userName, u_passWord, u_role) VALUES (?, ?, ?, 0)",
+                [u_line_id, u_userName, hashedPwd]
+            );
+            const newUserID = userResult.insertId;
+            await conn.query(
+                "INSERT INTO usersdetail (u_ID, de_tel, de_address, latitude, longitude) VALUES (?, ?, ?, ?, ?)",
+                [newUserID, de_tel, de_address, latitude, longitude]
+            );
+            await conn.query('COMMIT');
+            const token = jwt.sign(
+                { u_ID: newUserID, u_role: 0 },
+                process.env.SECRET_KEY_Token,
+                { expiresIn: '1d' }
+            );
+            return res.status(200).json({
+                status: 1,
+                message: "ลงทะเบียนและเข้าสู่ระบบสำเร็จ",
+                token: token,
+                userData: { u_ID: newUserID, u_userName, u_role: 0 }
+            });
+        } catch (err) {
+            await conn.query('ROLLBACK');
+            throw err;
+        }
+    } catch (error) {
+        console.error("Line Auth Error:", error);
+        res.status(500).json({ status: 0, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });
+    }
+};
