@@ -1,5 +1,5 @@
 const conn = require('../db')
-
+const LineService = require('../services/lineService');
 exports.getallOrder = async (req, res) => {
     try {
         const orderSQL = `SELECT orders.o_ID,orders.o_date,orders.o_endDate ,orders.o_image,orders.o_Status,
@@ -48,13 +48,13 @@ exports.orderDetail = async (req, res) => {
         return res.status(200).send({ message: `Select Order Detail ID : ${o_ID} Successfully`, status: 1 })
     } catch (error) {
         console.log(error)
-        return res.status(500).send({ message : "Somethings Went Wrong" , status : 0})
+        return res.status(500).send({ message: "Somethings Went Wrong", status: 0 })
     }
 }
 
 
-exports.getOrderID= async (req, res)=>{
-    const {o_ID} = req.params
+exports.getOrderID = async (req, res) => {
+    const { o_ID } = req.params
     try {
         if (!o_ID) {
             return res.status(400).send({
@@ -108,6 +108,22 @@ exports.addOrder = async (req, res) => {
                 return res.status(400).send({ message: `Can't Insert Order items`, status: 0 })
             }
         }
+
+        const itemsSummary = cartItems.map(item => `${item.p_Name} x${item.i_Amount}`).join(', ');
+
+        const lineResult = await LineService.sendOrderConfirmation(u_line_id, {
+            userName: u_userName,
+            itemsSummary: itemsSummary,
+            totalPrice: totalPrice
+        });
+
+        if (lineResult.success) {
+            res.json({ status: 1, message: "บันทึกออเดอร์และส่ง LINE สำเร็จ" });
+        } else {
+            // แม้ LINE จะส่งไม่สำเร็จ แต่ออเดอร์เข้าระบบแล้ว ก็ให้แจ้งเตือนว่าสำเร็จแต่ LINE มีปัญหา
+            res.json({ status: 1, message: "บันทึกออเดอร์สำเร็จ (LINE ขัดข้อง)" });
+        }
+
         io.emit('refreshOrders')
         return res.status(201).send({ message: `Order Success`, status: 1 })
     } catch (error) {
