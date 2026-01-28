@@ -135,32 +135,60 @@ exports.addOrder = async (req, res) => {
 
 
 exports.updateOrder = async (req, res) => {
-    const { cart, o_ID, o_endDate } = req.body
-    const io = req.app.get('io')
+    const { cart, o_ID, o_endDate } = req.body;
+    const io = req.app.get('io');
+
     try {
         if (!o_endDate) {
-            return res.status(400).send({ message: `User ID is Missing`, status: 0 })
+            return res.status(400).send({ message: `Delivery Date is Missing`, status: 0 });
         }
+
+        await conn.query('START TRANSACTION');
+
         for (const item of cart) {
-            const orderItemSQL = `UPDATE ordersitems  SET i_Amount = ?  WHERE i_ID = ? `
-            const [orderItemResult] = await conn.query(orderItemSQL, [item.i_Amount, item.i_ID])
+            const orderItemSQL = `UPDATE ordersitems SET i_Amount = ? WHERE i_ID = ? `;
+            const [orderItemResult] = await conn.query(orderItemSQL, [item.i_Amount, item.i_ID]);
             if (orderItemResult.affectedRows === 0) {
-                return res.status(400).send({ message: `Can't Update Order items`, status: 0 })
+                await conn.query('ROLLBACK');
+                return res.status(400).send({ message: `Can't Update Order item ID: ${item.i_ID}`, status: 0 });
             }
         }
 
-        const orderSQL = `UPDATE orders  SET o_endDate = ?  WHERE o_ID = ? `
-        const [orderResult] = await conn.query(orderSQL, [o_endDate, o_ID])
+        const orderSQL = `UPDATE orders SET o_endDate = ? WHERE o_ID = ? `;
+        const [orderResult] = await conn.query(orderSQL, [o_endDate, o_ID]);
         if (orderResult.affectedRows === 0) {
-            return res.status(400).send({ message: `Can't Update Order `, status: 0 })
+            await conn.query('ROLLBACK');
+            return res.status(400).send({ message: `Can't Update Order ID: ${o_ID}`, status: 0 });
         }
-        io.emit('refreshOrders')
-        return res.status(201).send({ message: `Update Order Items Successfully`, status: 1 })
+
+        const [orderInfo] = await conn.query(`
+            SELECT u.u_line_id 
+            FROM orders o 
+            JOIN users u ON o.u_ID = u.u_ID 
+            WHERE o.o_ID = ?
+        `, [o_ID]);
+
+        await conn.query('COMMIT');
+
+        const customer = orderInfo[0];
+        if (customer && customer.u_line_id) {
+            await LineService.sendDeliveryUpdate(customer.u_line_id, {
+                o_ID: o_ID,
+                o_endDate: new Date(o_endDate).toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                })
+            });
+        }
+
+        io.emit('refreshOrders');
+        return res.status(201).send({ message: `Update Order Items Successfully`, status: 1 });
+
     } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 })
+        await conn.query('ROLLBACK');
+        console.log(error);
+        return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 });
     }
-}
+};
 
 exports.getdateEnd = async (req, res) => {
     const { o_ID } = req.params
@@ -187,11 +215,26 @@ exports.updateStatusOrder = async (req, res) => {
     try {
         const updateStatusSQL = `UPDATE orders SET o_Status = ? WHERE o_ID = ?`
         const [updateStatusResult] = await conn.query(updateStatusSQL, [1, o_ID])
+
         if (updateStatusResult.affectedRows === 0) {
             return res.status(400).send({ message: `Can't Update Status Order ID ${o_ID}`, status: 0 })
         }
+
+        const [orderInfo] = await conn.query(`
+            SELECT u.u_line_id 
+            FROM orders o 
+            JOIN users u ON o.u_ID = u.u_ID 
+            WHERE o.o_ID = ?
+        `, [o_ID]);
+
+        const customer = orderInfo[0];
+
+        if (customer && customer.u_line_id) {
+            await LineService.sendOrderSuccess(customer.u_line_id, o_ID);
+        }
+
         io.emit('refreshOrders')
-        return res.status(200).send({ message: `Update Order ID ${o_ID}`, status: 1 })
+        return res.status(200).send({ message: `Update Order ID ${o_ID} Success`, status: 1 })
     } catch (error) {
         console.log(error)
         return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 })
