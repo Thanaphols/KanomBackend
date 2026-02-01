@@ -131,27 +131,21 @@ exports.deleteUser = async (req, res) => {
 
 
 exports.checkLogin = (req, res) => {
-    const authToken = req.headers['authorization']
-    try {
-        if (!authToken) {
-            return res.status(401).send({ message: 'Unknow Token', status: 0 })
+    const authToken = req.headers['authorization'];
+    if (!authToken) return res.status(401).send({ message: 'Unknown Token', status: 0 }); //
+
+    const token = authToken.split(' ')[1];
+    jwt.verify(token, process.env.SECRET_KEY_Token, (err, decode) => {
+        if (err) {
+            return res.status(403).send({ message: 'Token expired', status: 0 }); //
         }
-        let token = authToken.split(' ')[1]
-        jwt.verify(token, process.env.SECRET_KEY_Token, (err, decode) => {
-            if (err) {
-                return res.status(403).send({ message: 'Unauthorized ! Token expire', status: 0 })
-            }
-            return res.status(200).send({
-                message: `Login Success`,
-                status: 1,
-                userData: decode
-            })
-        })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: `Something Went Wrong` })
-    }
-}
+        return res.status(200).send({
+            message: `Login Success`,
+            status: 1,
+            userData: decode
+        });
+    });
+};
 
 exports.handleLineAuth = async (req, res) => {
     const {

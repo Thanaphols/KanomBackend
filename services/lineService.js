@@ -146,7 +146,7 @@ const LineService = {
                             action: {
                                 type: 'uri',
                                 label: 'จัดการออเดอร์ในเว็บ',
-                                uri: `https://liff.line.me/${process.env.LIFF_ID}/orders`
+                                uri: `https://liff.line.me/${process.env.LIFF_ID}/dashboard/orders`
                             },
                             style: 'primary',
                             color: '#FF5722',
