@@ -42,6 +42,11 @@ exports.addCart = async (req, res) => {
                 itemsSummary: itemsSummary.slice(0, -2),
                 totalPrice: totalPrice
             });
+            await LineService.notifyAdminNewOrder({
+                userName: user.u_userName,
+                itemsSummary: itemsSummary,
+                totalPrice: totalPrice
+            });
         }
 
         return res.status(201).send({ message: `Order Success`, status: 1 });

@@ -90,14 +90,12 @@ exports.updateProduct = async (req, res) => {
                 return res.status(400).send({ message: 'Please Enter All Data', status: 0 });
             }
 
-            // 1. ดึงข้อมูลเก่ามาเช็คเรื่องรูป
             const [oldData] = await conn.query("SELECT p_Img FROM product WHERE p_ID = ?", [p_ID]);
             if (oldData.length === 0) return res.status(404).send({ message: "Product Not Found" });
 
             let p_Img = oldData[0].p_Img;
             if (req.file) {
                 p_Img = req.file.filename; // ใช้รูปใหม่
-                // ลบรูปเก่าทิ้ง (ถ้ามี)
                 if (oldData[0].p_Img) {
                     const oldPath = `./uploads/products/${oldData[0].p_Img}`;
                     if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
