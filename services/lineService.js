@@ -1,9 +1,12 @@
+require('dotenv').config();
 const { messagingApi } = require('@line/bot-sdk'); // 🔥 ใช้ก้อน messagingApi แทน
 
 // สร้าง client ผ่านฟังก์ชัน MessagingApiClient ของ messagingApi
 const client = new messagingApi.MessagingApiClient({
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
+
+const ADMIN_LINE_ID = 'U00dab51de1c5d545e482e746f94c3890';
 
 const LineService = {
     sendOrderConfirmation: async (u_line_id, orderData) => {
@@ -114,6 +117,54 @@ const LineService = {
             return { success: true };
         } catch (err) {
             console.error("LINE Success Notification Error:", err);
+            return { success: false };
+        }
+    },
+    
+    notifyAdminNewOrder: async (orderData) => {
+        const message = {
+            type: 'flex',
+            altText: '🔔 มีออเดอร์ใหม่เข้ามา!',
+            contents: {
+                type: 'bubble',
+                styles: { header: { backgroundColor: '#FF5722' } }, // สีส้มเด่นๆ ให้แอดมินรู้ตัว
+                header: {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [{ type: 'text', text: '🔔 มีออเดอร์ใหม่!', weight: 'bold', color: '#ffffff', size: 'lg' }]
+                },
+                body: {
+                    type: 'box',
+                    layout: 'vertical',
+                    contents: [
+                        { type: 'text', text: `ลูกค้า: ${orderData.userName}`, weight: 'bold', size: 'sm' },
+                        { type: 'text', text: `รายการ: ${orderData.itemsSummary}`, size: 'xs', color: '#666666', margin: 'md', wrap: true },
+                        { type: 'text', text: `ยอดรวม: ${orderData.totalPrice} บาท`, weight: 'bold', size: 'md', margin: 'md', color: '#000000' },
+                        { type: 'separator', margin: 'lg' },
+                        {
+                            type: 'button',
+                            action: {
+                                type: 'uri',
+                                label: 'จัดการออเดอร์ในเว็บ',
+                                uri: `https://liff.line.me/${process.env.LIFF_ID}/orders`
+                            },
+                            style: 'primary',
+                            color: '#FF5722',
+                            margin: 'lg'
+                        }
+                    ]
+                }
+            }
+        };
+
+        try {
+            await client.pushMessage({
+                to: ADMIN_LINE_ID, // ส่งหาแอดมินโดยตรง
+                messages: [message]
+            });
+            return { success: true };
+        } catch (err) {
+            console.error("Notify Admin Error:", err);
             return { success: false };
         }
     }
