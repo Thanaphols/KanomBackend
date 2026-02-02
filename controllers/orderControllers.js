@@ -1,3 +1,4 @@
+//controllers/orderControllers.js
 const conn = require('../db')
 const LineService = require('../services/lineService');
 exports.getallOrder = async (req, res) => {
@@ -120,7 +121,6 @@ exports.addOrder = async (req, res) => {
         if (lineResult.success) {
             res.json({ status: 1, message: "บันทึกออเดอร์และส่ง LINE สำเร็จ" });
         } else {
-            // แม้ LINE จะส่งไม่สำเร็จ แต่ออเดอร์เข้าระบบแล้ว ก็ให้แจ้งเตือนว่าสำเร็จแต่ LINE มีปัญหา
             res.json({ status: 1, message: "บันทึกออเดอร์สำเร็จ (LINE ขัดข้อง)" });
         }
 
@@ -278,7 +278,6 @@ exports.sumPrice = async (req, res) => {
         const [selectItemAmount] = await conn.query(selectItemAmountSQL, [o_ID])
         for (const item of selectItemAmount) {
             sum += item.p_Price * item.i_Amount
-            // console.log(`p_ID : ${item.p_ID}  price : ${item.p_Price}  Amount : ${item.i_Amount}`)
         }
         const data = sum
         return res.status(200).send({ message: `Sum success`, data, status: 1 })
@@ -303,15 +302,43 @@ exports.getUserOrders = async (req, res) => {
         `;
         const [results] = await conn.query(sql, [u_ID]);
 
-        // ตรวจสอบว่ามีข้อมูลหรือไม่ก่อนส่ง
         if (results.length === 0) {
             return res.status(200).json({ status: 1, data: [] });
         }
 
         res.status(200).json({ status: 1, data: results });
     } catch (error) {
-        // พิมพ์ Error ออกมาดูที่ Console ของ Server เพื่อความชัดเจน
         console.error(error);
         res.status(500).json({ status: 0, message: "Internal Server Error" });
+    }
+};
+
+exports.cancelOrder = async (req, res) => {
+    const { o_ID } = req.params;
+    const u_ID = req.userData.u_ID;
+    const io = req.app.get('io');
+
+    try {
+        const [order] = await conn.query(
+            "SELECT o_Status FROM orders WHERE o_ID = ? AND u_ID = ?",
+            [o_ID, u_ID]
+        );
+
+        if (order.length === 0) {
+            return res.status(404).json({ message: "ไม่พบออเดอร์ของคุณ", status: 0 });
+        }
+        if (order[0].o_Status !== 0) {
+            return res.status(400).json({ message: "ไม่สามารถยกเลิกได้ เนื่องจากออเดอร์ดำเนินการไปแล้ว", status: 0 });
+        }
+
+        await conn.query("DELETE FROM ordersitems WHERE o_ID = ?", [o_ID]);
+        await conn.query("DELETE FROM orders WHERE o_ID = ?", [o_ID]);
+
+        io.emit('refreshOrders');
+        return res.status(200).json({ message: "ยกเลิกออเดอร์เรียบร้อยแล้ว", status: 1 });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "เกิดข้อผิดพลาดในการยกเลิก", status: 0 });
     }
 };

@@ -12,4 +12,5 @@ router.get('/getdateEnd/:o_ID',validateMiddlewere.validateToken,orderController.
 router.patch(`/updateOrder`,validateMiddlewere.validateToken,orderController.updateOrder)
 router.get('/sumPrice/:o_ID',validateMiddlewere.validateToken,orderController.sumPrice)
 router.get('/getUserOrders',validateMiddlewere.validateToken,orderController.getUserOrders)
+router.delete('/cancelOrder/:o_ID',validateMiddlewere.validateToken,orderController.cancelOrder)
 module.exports = router

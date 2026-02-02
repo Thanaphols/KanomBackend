@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { messagingApi } = require('@line/bot-sdk'); // 🔥 ใช้ก้อน messagingApi แทน
+const { messagingApi } = require('@line/bot-sdk');
 
 // สร้าง client ผ่านฟังก์ชัน MessagingApiClient ของ messagingApi
 const client = new messagingApi.MessagingApiClient({
