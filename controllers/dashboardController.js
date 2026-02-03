@@ -1,3 +1,4 @@
+//dashboardController
 const conn = require('../db')
 
 exports.CountProduct = async (req, res) => {
@@ -42,7 +43,7 @@ exports.CountProduct = async (req, res) => {
                 ORDER BY YEAR(orders.o_Date) ASC, MONTH(orders.o_Date) ASC
         `;
         const todaySalesSQL = `
-            SELECT SUM(ordersitems.i_Amount * product.p_Price) AS todayTotal 
+                SELECT IFNULL(SUM(ordersitems.i_Amount * product.p_Price), 0) AS todayTotal 
                 FROM orders
                 JOIN ordersItems ON orders.o_ID = ordersitems.o_ID
                 JOIN product ON ordersitems.p_ID = product.p_ID
