@@ -148,16 +148,8 @@ exports.checkLogin = (req, res) => {
     });
 };
 
-// backend/controllers/authController.js
 exports.handleLineAuth = async (req, res) => {
-    const {
-        u_line_id,
-        u_userName,
-        de_tel,
-        de_address,
-        latitude,
-        longitude
-    } = req.body;
+    const { u_line_id, u_userName, de_tel, de_address, latitude, longitude } = req.body;
 
     try {
         const [users] = await conn.query(
@@ -172,12 +164,7 @@ exports.handleLineAuth = async (req, res) => {
                 process.env.SECRET_KEY_Token,
                 { expiresIn: '1d' }
             );
-
-            return res.status(200).json({
-                status: 1,
-                token: token,
-                userData: user
-            });
+            return res.status(200).json({ status: 1, token: token, userData: user });
         }
 
         if (!de_tel) {
@@ -188,24 +175,20 @@ exports.handleLineAuth = async (req, res) => {
             await conn.query('START TRANSACTION');
 
             const [userResult] = await conn.query(
-                "INSERT INTO users (u_userName, u_line_id, u_role) VALUES (?, ?, 0)",
-                [u_userName, u_line_id]
+                "INSERT INTO users (u_userName, u_line_id, u_tel, u_role) VALUES (?, ?, ?, 0)",
+                [u_userName, u_line_id, de_tel]
             );
 
             const newUserID = userResult.insertId;
 
             await conn.query(
-                "INSERT INTO usersdetail (u_ID, de_tel, de_address, latitude, longitude) VALUES (?, ?, ?, ?, ?)",
-                [newUserID, de_tel, de_address, latitude, longitude]
+                "INSERT INTO addresses (u_ID, addr_Name, addr_Detail, latitude, longitude, is_Default) VALUES (?, 'ร้านค้าหลัก', ?, ?, ?, 1)",
+                [newUserID, de_address, latitude, longitude]
             );
 
             await conn.query('COMMIT');
 
-            const token = jwt.sign(
-                { u_ID: newUserID, u_role: 0 },
-                process.env.SECRET_KEY_Token,
-                { expiresIn: '1d' }
-            );
+            const token = jwt.sign({ u_ID: newUserID, u_role: 0 }, process.env.SECRET_KEY_Token, { expiresIn: '1d' });
 
             return res.status(200).json({
                 status: 1,
@@ -218,7 +201,6 @@ exports.handleLineAuth = async (req, res) => {
             await conn.query('ROLLBACK');
             throw dbError;
         }
-
     } catch (error) {
         console.error("Line Auth Error:", error);
         res.status(500).json({ status: 0, message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์" });

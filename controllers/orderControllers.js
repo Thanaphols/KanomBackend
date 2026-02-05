@@ -3,21 +3,19 @@ const conn = require('../db')
 const LineService = require('../services/lineService');
 exports.getallOrder = async (req, res) => {
     try {
-        const orderSQL = `SELECT orders.o_ID,orders.o_date,orders.o_endDate ,orders.o_image,orders.o_Status,
-        users.u_userName,
-        usersdetail.de_tel 
-        FROM orders INNER JOIN users ON users.u_ID = orders.u_ID
-        INNER JOIN usersdetail ON usersdetail.u_ID = orders.u_ID ORDER BY orders.o_ID ASC
-        `
-        const [orderResult] = await conn.query(orderSQL)
-        const data = orderResult
-        return res.status(200).send({ message: "Select Order Data Successfully", data, status: 1 })
-
+        const orderSQL = `
+            SELECT orders.o_ID, orders.o_date, orders.o_endDate, orders.o_Status, orders.is_deleted,
+            users.u_userName, users.u_tel 
+            FROM orders 
+            INNER JOIN users ON users.u_ID = orders.u_ID
+            ORDER BY orders.o_ID DESC
+        `;
+        const [orderResult] = await conn.query(orderSQL);
+        return res.status(200).send({ data: orderResult, status: 1 });
     } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: "Somethings Went Wrong", status: 0 })
+        res.status(500).send({ status: 0 });
     }
-}
+};
 exports.orderitems = async (req, res) => {
     const { o_ID } = req.params
     try {
@@ -287,7 +285,7 @@ exports.sumPrice = async (req, res) => {
     }
 }
 
-// orderController.js
+
 exports.getUserOrders = async (req, res) => {
     const u_ID = req.userData.u_ID;
     try {
@@ -297,19 +295,13 @@ exports.getUserOrders = async (req, res) => {
             FROM orders o
             JOIN ordersitems i ON o.o_ID = i.o_ID
             JOIN product p ON i.p_ID = p.p_ID
-            WHERE o.u_ID = ?
+            WHERE o.u_ID = ? AND o.is_deleted = 0
             ORDER BY o.o_date DESC
         `;
         const [results] = await conn.query(sql, [u_ID]);
-
-        if (results.length === 0) {
-            return res.status(200).json({ status: 1, data: [] });
-        }
-
         res.status(200).json({ status: 1, data: results });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ status: 0, message: "Internal Server Error" });
+        res.status(500).json({ status: 0, message: "Error" });
     }
 };
 
@@ -320,25 +312,23 @@ exports.cancelOrder = async (req, res) => {
 
     try {
         const [order] = await conn.query(
-            "SELECT o_Status FROM orders WHERE o_ID = ? AND u_ID = ?",
+            "SELECT o_Status, is_deleted FROM orders WHERE o_ID = ? AND u_ID = ?",
             [o_ID, u_ID]
         );
 
-        if (order.length === 0) {
-            return res.status(404).json({ message: "ไม่พบออเดอร์ของคุณ", status: 0 });
-        }
-        if (order[0].o_Status !== 0) {
-            return res.status(400).json({ message: "ไม่สามารถยกเลิกได้ เนื่องจากออเดอร์ดำเนินการไปแล้ว", status: 0 });
+        if (order.length === 0 || order[0].is_deleted === 1) {
+            return res.status(404).json({ message: "ไม่พบออเดอร์", status: 0 });
         }
 
-        await conn.query("DELETE FROM ordersitems WHERE o_ID = ?", [o_ID]);
-        await conn.query("DELETE FROM orders WHERE o_ID = ?", [o_ID]);
+        if (order[0].o_Status !== 0) {
+            return res.status(400).json({ message: "ไม่สามารถยกเลิกได้เนื่องจากร้านดำเนินการแล้ว", status: 0 });
+        }
+
+        await conn.query("UPDATE orders SET is_deleted = 1 WHERE o_ID = ?", [o_ID]);
 
         io.emit('refreshOrders');
-        return res.status(200).json({ message: "ยกเลิกออเดอร์เรียบร้อยแล้ว", status: 1 });
-
+        return res.status(200).json({ message: "ยกเลิกออเดอร์สำเร็จ", status: 1 });
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "เกิดข้อผิดพลาดในการยกเลิก", status: 0 });
+        res.status(500).json({ message: "Error", status: 0 });
     }
 };

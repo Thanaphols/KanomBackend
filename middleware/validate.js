@@ -1,3 +1,4 @@
+//middleware/validate.js
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
 validateToken = (req,res,next)=>{
