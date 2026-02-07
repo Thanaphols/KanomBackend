@@ -1,12 +1,68 @@
 require('dotenv').config();
+
 const { messagingApi } = require('@line/bot-sdk');
 
-// สร้าง client ผ่านฟังก์ชัน MessagingApiClient ของ messagingApi
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const conn = require('../db')
+
 const client = new messagingApi.MessagingApiClient({
     channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
 });
 
 const ADMIN_LINE_ID = 'U00dab51de1c5d545e482e746f94c3890';
+
+const sendReply = async (replyToken, text) => {
+    try {
+        await axios.post('https://api.line.me/v2/bot/message/reply', {
+            replyToken: replyToken,
+            messages: [{ type: 'text', text: text }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+            }
+        });
+    } catch (err) {
+        console.error("Reply Error:", err.response?.data || err);
+    }
+};
+
+// ฟังก์ชันโหลดรูปจาก LINE
+const downloadLineImage = async (messageId, fileName) => {
+    const url = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
+    const filePath = path.join(__dirname, '../uploads/slips', fileName);
+
+    console.log("📂 กำลังเซฟไฟล์ไปที่:", filePath); // ดูว่า Path ถูกไหม
+
+    try {
+        const response = await axios({
+            method: 'get',
+            url: url,
+            responseType: 'stream',
+            headers: {
+                'Authorization': `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`
+            }
+        });
+
+        return new Promise((resolve, reject) => {
+            const writer = fs.createWriteStream(filePath);
+            response.data.pipe(writer);
+            writer.on('finish', () => {
+                console.log("✅ โหลดรูปสำเร็จ:", fileName);
+                resolve();
+            });
+            writer.on('error', (err) => {
+                console.error("❌ เขียนไฟล์ไม่สำเร็จ:", err);
+                reject(err);
+            });
+        });
+    } catch (error) {
+        console.error("❌ ดึงรูปจาก LINE ไม่ได้:", error.response?.data || error.message);
+        throw error;
+    }
+};
 
 const LineService = {
     sendOrderConfirmation: async (u_line_id, orderData) => {
@@ -120,7 +176,7 @@ const LineService = {
             return { success: false };
         }
     },
-    
+
     notifyAdminNewOrder: async (orderData) => {
         const message = {
             type: 'flex',
@@ -167,9 +223,101 @@ const LineService = {
             console.error("Notify Admin Error:", err);
             return { success: false };
         }
-    }
-};
+    },
 
+    handleWebhook: async (req, res) => {
+        const events = req.body.events;
+        console.log("📩 มี Event เข้ามา:", events?.length); // เช็กว่ามีข้อมูลเข้าไหม
+
+        for (let event of events) {
+            console.log("🔎 ประเภท Event:", event.type);
+
+            if (event.type === 'message' && event.message.type === 'image') {
+                const line_id = event.source.userId;
+                console.log("📸 ได้รับรูปภาพจาก LINE ID:", line_id);
+
+                try {
+                    const [orders] = await conn.query(
+                        `SELECT o_ID FROM orders o 
+                     JOIN users u ON o.u_ID = u.u_ID 
+                     WHERE u.u_line_id = ? AND o.o_deposit_status = 1 
+                     ORDER BY o.o_date DESC LIMIT 1`,
+                        [line_id]
+                    );
+
+                    console.log("📦 ผลการหาออเดอร์ใน DB:", orders.length, "รายการ");
+
+                    if (orders.length > 0) {
+                        const o_ID = orders[0].o_ID;
+                        const messageId = event.message.id;
+                        const fileName = `slip_${o_ID}_${Date.now()}.jpg`;
+
+                        console.log("🚀 กำลังเริ่มโหลดรูป...");
+
+                        // ✅ 1. เรียกใช้ฟังก์ชันดาวน์โหลดรูป
+                        await downloadLineImage(messageId, fileName);
+
+                        // ✅ 2. อัปเดต Database: ใส่ชื่อไฟล์สลิป และเปลี่ยนสถานะเป็น 2 (รอตรวจ)
+                        await conn.query(
+                            "UPDATE orders SET o_deposit_slip = ?, o_deposit_status = 2 WHERE o_ID = ?",
+                            [fileName, o_ID]
+                        );
+
+                        console.log(`✅ อัปเดตออเดอร์ #${o_ID} สำเร็จ!`);
+
+                        // ✅ 3. ส่งข้อความตอบกลับลูกค้า
+                        await sendReply(event.replyToken, "ได้รับสลิปมัดจำแล้วค่ะ รอแอดมินตรวจสอบสักครู่นะคะ ✨");
+
+                    } else {
+                        console.log("⚠️ ไม่พบออเดอร์ที่รอโอนมัดจำ (Status 1) สำหรับ User นี้");
+                    }
+                } catch (error) {
+                    console.error("❌ Webhook Logic Error:", error);
+                }
+            }
+        }
+        res.sendStatus(200);
+    },
+
+    sendDepositRequest: async (u_line_id, depositData) => {
+        const message = {
+            type: 'flex',
+            altText: 'แจ้งยอดมัดจำจากร้านฟาร์มขนม',
+            contents: {
+                type: 'bubble',
+                styles: { header: { backgroundColor: '#FFC107' } },
+                header: {
+                    type: 'box', layout: 'vertical',
+                    contents: [{ type: 'text', text: '💰 แจ้งยอดมัดจำ 50%', weight: 'bold', color: '#000000', size: 'lg' }]
+                },
+                body: {
+                    type: 'box', layout: 'vertical',
+                    contents: [
+                        { type: 'text', text: `ออเดอร์ #${depositData.o_ID}`, size: 'xs', color: '#aaaaaa' },
+                        { type: 'text', text: `ยอดมัดจำที่ต้องโอน:`, margin: 'md', size: 'sm' },
+                        { type: 'text', text: `${depositData.amount.toLocaleString()} บาท`, weight: 'bold', size: 'xxl', color: '#cc0000' },
+                        { type: 'separator', margin: 'lg' },
+                        { type: 'text', text: '🏦 พร้อมเพย์', size: 'sm', margin: 'md', weight: 'bold' },
+                        { type: 'text', text: 'เลขบัญชี: 0926166623', size: 'md' },
+                        { type: 'text', text: 'ชื่อบัญชี: นายวชิรวิทย์ ชื่นจิตร', size: 'sm' },
+                        { type: 'text', text: '* รบกวนโอนและส่งสลิปภายใน 24 ชม. เพื่อลงคิวจัดส่งนะคะ', size: 'xs', color: '#aaaaaa', margin: 'lg', wrap: true }
+                    ]
+                }
+            }
+        };
+
+        try {
+            await client.pushMessage({
+                to: u_line_id,
+                messages: [message]
+            });
+            return { success: true };
+        } catch (err) {
+            console.error("LINE Deposit Request Error:", err);
+            return { success: false };
+        }
+    },
+};
 
 
 module.exports = LineService;

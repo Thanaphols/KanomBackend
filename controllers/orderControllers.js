@@ -132,58 +132,93 @@ exports.addOrder = async (req, res) => {
 
 
 exports.updateOrder = async (req, res) => {
-    const { cart, o_ID, o_endDate } = req.body;
+    const { cart, o_ID, o_endDate, o_is_deposit_required, o_deposit_status } = req.body;
     const io = req.app.get('io');
 
+    let depositAmount = 0;
+
     try {
-        if (!o_endDate) {
-            return res.status(400).send({ message: `Delivery Date is Missing`, status: 0 });
+        const isSkippingDeposit = o_is_deposit_required === 0;
+        const isDepositFinished = o_deposit_status === 3;
+
+        if ((isSkippingDeposit || isDepositFinished) && !o_endDate) {
+            return res.status(400).send({ message: `กรุณากำหนดวันจัดส่งสินค้า`, status: 0 });
         }
 
         await conn.query('START TRANSACTION');
 
-        for (const item of cart) {
-            const orderItemSQL = `UPDATE ordersitems SET i_Amount = ? WHERE i_ID = ? `;
-            const [orderItemResult] = await conn.query(orderItemSQL, [item.i_Amount, item.i_ID]);
-            if (orderItemResult.affectedRows === 0) {
-                await conn.query('ROLLBACK');
-                return res.status(400).send({ message: `Can't Update Order item ID: ${item.i_ID}`, status: 0 });
+
+        if (cart && cart.length > 0) {
+            for (const item of cart) {
+                const orderItemSQL = `UPDATE ordersitems SET i_Amount = ? WHERE i_ID = ? `;
+                await conn.query(orderItemSQL, [item.i_Amount, item.i_ID]);
             }
         }
 
-        const orderSQL = `UPDATE orders SET o_endDate = ? WHERE o_ID = ? `;
-        const [orderResult] = await conn.query(orderSQL, [o_endDate, o_ID]);
-        if (orderResult.affectedRows === 0) {
-            await conn.query('ROLLBACK');
-            return res.status(400).send({ message: `Can't Update Order ID: ${o_ID}`, status: 0 });
+        const updateFields = [];
+        const updateValues = [];
+
+        if (o_endDate) {
+            updateFields.push("o_endDate = ?");
+            updateValues.push(o_endDate);
         }
 
+        if (o_is_deposit_required !== undefined) {
+            updateFields.push("o_is_deposit_required = ?");
+            updateValues.push(o_is_deposit_required);
+
+            if (o_is_deposit_required === 1 && o_deposit_status !== 3) {
+                const [totalData] = await conn.query(
+                    "SELECT SUM(i_Amount * 100) as total FROM ordersitems WHERE o_ID = ?", [o_ID]
+                );
+                
+                depositAmount = (totalData[0].total || 0) / 2;
+
+                updateFields.push("o_deposit_amount = ?", "o_deposit_status = ?");
+                updateValues.push(depositAmount, 1);
+            }
+            else if (o_is_deposit_required === 0) {
+                updateFields.push("o_deposit_status = ?");
+                updateValues.push(0);
+            }
+        }
+
+        updateValues.push(o_ID);
+        const orderSQL = `UPDATE orders SET ${updateFields.join(", ")} WHERE o_ID = ?`;
+        await conn.query(orderSQL, updateValues);
+
         const [orderInfo] = await conn.query(`
-            SELECT u.u_line_id 
-            FROM orders o 
-            JOIN users u ON o.u_ID = u.u_ID 
-            WHERE o.o_ID = ?
+            SELECT u.u_line_id FROM orders o 
+            JOIN users u ON o.u_ID = u.u_ID WHERE o.o_ID = ?
         `, [o_ID]);
 
         await conn.query('COMMIT');
 
         const customer = orderInfo[0];
         if (customer && customer.u_line_id) {
-            await LineService.sendDeliveryUpdate(customer.u_line_id, {
-                o_ID: o_ID,
-                o_endDate: new Date(o_endDate).toLocaleDateString('th-TH', {
-                    year: 'numeric', month: 'long', day: 'numeric'
-                })
-            });
+            if (o_is_deposit_required === 1 && o_deposit_status !== 3) {
+                await LineService.sendDepositRequest(customer.u_line_id, {
+                    o_ID: o_ID,
+                    amount: depositAmount // ตัวแปรที่คำนวณไว้ด้านบน
+                });
+            } else if (o_endDate) {
+
+                await LineService.sendDeliveryUpdate(customer.u_line_id, {
+                    o_ID: o_ID,
+                    o_endDate: new Date(o_endDate).toLocaleDateString('th-TH', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    })
+                });
+            }
         }
 
         io.emit('refreshOrders');
-        return res.status(201).send({ message: `Update Order Items Successfully`, status: 1 });
+        return res.status(201).send({ message: `อัปเดตข้อมูลออเดอร์เรียบร้อย`, status: 1 });
 
     } catch (error) {
         await conn.query('ROLLBACK');
         console.log(error);
-        return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 });
+        return res.status(500).send({ message: `เกิดข้อผิดพลาด`, status: 0 });
     }
 };
 
@@ -332,37 +367,20 @@ exports.cancelOrder = async (req, res) => {
     }
 };
 
-// เพิ่มใน controllers/orderControllers.js
-exports.updateDepositPolicy = async (req, res) => {
-    const { o_ID, isRequired } = req.body;
+exports.verifyDeposit = async (req, res) => {
+    const { o_ID } = req.body;
     const io = req.app.get('io');
 
     try {
-        if (isRequired === 1) {
-            const [orderItems] = await conn.query(
-                "SELECT SUM(i.i_Amount * p.p_Price) as total FROM ordersitems i JOIN product p ON i.p_ID = p.p_ID WHERE i.o_ID = ?",
-                [o_ID]
-            );
-            const depositAmount = orderItems[0].total / 2;
-
-            await conn.query(
-                "UPDATE orders SET o_is_deposit_required = 1, o_deposit_status = 1, o_deposit_amount = ? WHERE o_ID = ?",
-                [depositAmount, o_ID]
-            );
-
-            console.log(`แจ้งลูกค้าออเดอร์ ${o_ID} ให้โอนมัดจำจำนวน ${depositAmount} บาท`);
-
-        } else {
-
-            await conn.query(
-                "UPDATE orders SET o_is_deposit_required = 0, o_deposit_status = 0 WHERE o_ID = ?",
-                [o_ID]
-            );
-        }
+        await conn.query(
+            "UPDATE orders SET o_deposit_status = 3 WHERE o_ID = ?",
+            [o_ID]
+        );
 
         io.emit('refreshOrders');
-        return res.status(200).json({ message: "อัปเดตเงื่อนไขการมัดจำสำเร็จ", status: 1 });
+        return res.status(200).json({ message: "ยืนยันมัดจำสำเร็จ", status: 1 });
     } catch (error) {
-        res.status(500).json({ message: "เกิดข้อผิดพลาด", status: 0 });
+        return res.status(500).json({ message: "Error", status: 0 });
     }
 };
+
