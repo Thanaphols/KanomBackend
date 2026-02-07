@@ -61,9 +61,8 @@ exports.getOrderID = async (req, res) => {
                 status: 0
             });
         }
-        const sql = ` SELECT  o.*,u.u_userName,  ud.de_tel         
+        const sql = ` SELECT  o.*,u.u_userName,  u.u_tel         
             FROM orders o JOIN users u ON o.u_ID = u.u_ID
-            JOIN  usersdetail ud ON u.u_ID = ud.u_ID
             WHERE  o.o_ID = ?
         `;
         const [result] = await conn.query(sql, [o_ID]);
@@ -330,5 +329,40 @@ exports.cancelOrder = async (req, res) => {
         return res.status(200).json({ message: "ยกเลิกออเดอร์สำเร็จ", status: 1 });
     } catch (error) {
         res.status(500).json({ message: "Error", status: 0 });
+    }
+};
+
+// เพิ่มใน controllers/orderControllers.js
+exports.updateDepositPolicy = async (req, res) => {
+    const { o_ID, isRequired } = req.body;
+    const io = req.app.get('io');
+
+    try {
+        if (isRequired === 1) {
+            const [orderItems] = await conn.query(
+                "SELECT SUM(i.i_Amount * p.p_Price) as total FROM ordersitems i JOIN product p ON i.p_ID = p.p_ID WHERE i.o_ID = ?",
+                [o_ID]
+            );
+            const depositAmount = orderItems[0].total / 2;
+
+            await conn.query(
+                "UPDATE orders SET o_is_deposit_required = 1, o_deposit_status = 1, o_deposit_amount = ? WHERE o_ID = ?",
+                [depositAmount, o_ID]
+            );
+
+            console.log(`แจ้งลูกค้าออเดอร์ ${o_ID} ให้โอนมัดจำจำนวน ${depositAmount} บาท`);
+
+        } else {
+
+            await conn.query(
+                "UPDATE orders SET o_is_deposit_required = 0, o_deposit_status = 0 WHERE o_ID = ?",
+                [o_ID]
+            );
+        }
+
+        io.emit('refreshOrders');
+        return res.status(200).json({ message: "อัปเดตเงื่อนไขการมัดจำสำเร็จ", status: 1 });
+    } catch (error) {
+        res.status(500).json({ message: "เกิดข้อผิดพลาด", status: 0 });
     }
 };

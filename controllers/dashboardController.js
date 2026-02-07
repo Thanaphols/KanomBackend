@@ -4,7 +4,7 @@ const conn = require('../db')
 exports.CountProduct = async (req, res) => {
     try {
         const countProductSQL = 'SELECT count(p_Name) AS totalProduct FROM product'
-        const countCustomerSQL = 'SELECT count(u_userName) AS users FROM users WHERE u_role != ?'
+        const countCustomerSQL = 'SELECT count(u_userName) AS users FROM users WHERE u_role = 0'
         const countTotalOrderSQL = 'SELECT count(o_id) AS allOrder FROM orders'
         const countUnsuccessOrderSQL = 'SELECT count(o_id) AS unsuccessOrder FROM orders WHERE o_Status = ?'
         const countSuccessOrderSQL = 'SELECT count(o_id) AS successOrder FROM orders WHERE o_Status = 1'

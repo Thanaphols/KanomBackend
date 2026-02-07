@@ -5,9 +5,7 @@ const jwt = require('jsonwebtoken')
 exports.getUser = async (req, res) => {
    try {
       const selectSQL = `
-            SELECT u.u_ID, u.u_userName, u.u_role, d.de_tel, d.de_address, d.latitude, d.longitude 
-            FROM users u
-            LEFT JOIN usersdetail d ON u.u_ID = d.u_ID
+            SELECT * FROM users
         `;
       const [result] = await conn.query(selectSQL, []);
 
