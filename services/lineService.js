@@ -249,6 +249,10 @@ const LineService = {
 
                     if (orders.length > 0) {
                         const o_ID = orders[0].o_ID;
+                        if (orders.o_deposit_status >= 2) {
+                            console.log("🚫 ออเดอร์นี้มีสลิปแล้ว หรือตรวจสอบเสร็จแล้ว ข้ามการโหลดรูป");
+                            return;
+                        }
                         const messageId = event.message.id;
                         const fileName = `slip_${o_ID}_${Date.now()}.jpg`;
 
@@ -261,6 +265,8 @@ const LineService = {
                         await conn.query(
                             "UPDATE orders SET o_deposit_slip = ?, o_deposit_status = 2 WHERE o_ID = ?",
                             [fileName, o_ID]
+
+
                         );
 
                         console.log(`✅ อัปเดตออเดอร์ #${o_ID} สำเร็จ!`);
