@@ -113,6 +113,18 @@ exports.updateProfile = async (req, res) => {
    }
 };
 
+exports.getAddresses = async (req, res) => {
+   const u_ID = req.userData.u_ID;
+   try {
+      const [addresses] = await conn.query(
+         "SELECT * FROM addresses WHERE u_ID = ? ORDER BY is_Default DESC, addr_ID DESC",
+         [u_ID]
+      );
+      return res.status(200).json({ status: 1, data: addresses });
+   } catch (error) {
+      res.status(500).json({ status: 0, message: "เซิร์ฟเวอร์ขัดข้อง" });
+   }
+};
 exports.addAddress = async (req, res) => {
    const u_ID = req.userData.u_ID;
    const { addr_Name, addr_Detail, latitude, longitude, is_Default } = req.body;
@@ -136,24 +148,83 @@ exports.addAddress = async (req, res) => {
       res.status(500).json({ status: 0, message: "ไม่สามารถเพิ่มที่อยู่ได้" });
    }
 };
+exports.updateAddress = async (req, res) => {
+   const u_ID = req.userData.u_ID;
+   const { addr_ID, addr_Name, addr_Detail, latitude, longitude, is_Default } = req.body;
 
+   try {
+      await conn.query('START TRANSACTION');
+
+      // ถ้ามีการตั้งเป็นที่อยู่หลัก ให้เคลียร์อันอื่นก่อน
+      if (is_Default === 1) {
+         await conn.query("UPDATE addresses SET is_Default = 0 WHERE u_ID = ?", [u_ID]);
+      }
+
+      const [result] = await conn.query(
+         `UPDATE addresses 
+             SET addr_Name = ?, addr_Detail = ?, latitude = ?, longitude = ?, is_Default = ? 
+             WHERE addr_ID = ? AND u_ID = ?`,
+         [addr_Name, addr_Detail, latitude, longitude, is_Default, addr_ID, u_ID]
+      );
+
+      if (result.affectedRows === 0) {
+         await conn.query('ROLLBACK');
+         return res.status(404).json({ status: 0, message: "ไม่พบที่อยู่ที่ต้องการแก้ไข" });
+      }
+
+      await conn.query('COMMIT');
+      return res.status(200).json({ status: 1, message: "แก้ไขที่อยู่สำเร็จ" });
+   } catch (error) {
+      await conn.query('ROLLBACK');
+      res.status(500).json({ status: 0, message: "ไม่สามารถแก้ไขที่อยู่ได้" });
+   }
+};
 exports.deleteAddress = async (req, res) => {
-    const u_ID = req.userData.u_ID;
-    const { addr_ID } = req.params;
+   const u_ID = req.userData.u_ID;
+   const { addr_ID } = req.params;
 
-    try {
-      
-        const [result] = await conn.query(
-            "DELETE FROM addresses WHERE addr_ID = ? AND u_ID = ?",
-            [addr_ID, u_ID]
-        );
+   try {
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ status: 0, message: "ไม่พบที่อยู่ที่ต้องการลบ" });
-        }
+      const [result] = await conn.query(
+         "DELETE FROM addresses WHERE addr_ID = ? AND u_ID = ?",
+         [addr_ID, u_ID]
+      );
 
-        return res.status(200).json({ status: 1, message: "ลบที่อยู่สำเร็จ" });
-    } catch (error) {
-        res.status(500).json({ status: 0, message: "เซิร์ฟเวอร์ขัดข้อง" });
-    }
+      if (result.affectedRows === 0) {
+         return res.status(404).json({ status: 0, message: "ไม่พบที่อยู่ที่ต้องการลบ" });
+      }
+
+      return res.status(200).json({ status: 1, message: "ลบที่อยู่สำเร็จ" });
+   } catch (error) {
+      res.status(500).json({ status: 0, message: "เซิร์ฟเวอร์ขัดข้อง" });
+   }
+};
+
+exports.setDefaultAddress = async (req, res) => {
+   const u_ID = req.userData.u_ID;
+   const { addr_ID } = req.body;
+
+   try {
+      await conn.query('START TRANSACTION');
+
+      // 1. ล้างค่า Default ของที่อยู่ทั้งหมดของผู้ใช้นี้ให้เป็น 0
+      await conn.query("UPDATE addresses SET is_Default = 0 WHERE u_ID = ?", [u_ID]);
+
+      // 2. ตั้งค่าที่อยู่ที่เลือกให้เป็น Default (1)
+      const [result] = await conn.query(
+         "UPDATE addresses SET is_Default = 1 WHERE addr_ID = ? AND u_ID = ?",
+         [addr_ID, u_ID]
+      );
+
+      if (result.affectedRows === 0) {
+         await conn.query('ROLLBACK');
+         return res.status(404).json({ status: 0, message: "ไม่พบที่อยู่" });
+      }
+
+      await conn.query('COMMIT');
+      return res.status(200).json({ status: 1, message: "ตั้งเป็นที่อยู่หลักเรียบร้อยแล้ว" });
+   } catch (error) {
+      await conn.query('ROLLBACK');
+      res.status(500).json({ status: 0, message: "เซิร์ฟเวอร์ขัดข้อง" });
+   }
 };

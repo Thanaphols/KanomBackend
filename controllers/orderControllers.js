@@ -4,15 +4,26 @@ const LineService = require('../services/lineService');
 exports.getallOrder = async (req, res) => {
     try {
         const orderSQL = `
-            SELECT orders.o_ID, orders.o_date, orders.o_endDate, orders.o_Status, orders.is_deleted,
-            users.u_userName, users.u_tel 
+            SELECT 
+                orders.o_ID, 
+                orders.o_date, 
+                orders.o_endDate, 
+                orders.o_Status, 
+                orders.is_deleted,
+                users.u_userName, 
+                users.u_tel,
+                addresses.addr_Detail, 
+                addresses.latitude,    
+                addresses.longitude
             FROM orders 
             INNER JOIN users ON users.u_ID = orders.u_ID
+            LEFT JOIN addresses ON orders.addr_ID = addresses.addr_ID
             ORDER BY orders.o_ID DESC
         `;
         const [orderResult] = await conn.query(orderSQL);
         return res.status(200).send({ data: orderResult, status: 1 });
     } catch (error) {
+        console.error("Get All Orders Error:", error);
         res.status(500).send({ status: 0 });
     }
 };
@@ -53,7 +64,7 @@ exports.orderDetail = async (req, res) => {
 
 
 exports.getOrderID = async (req, res) => {
-    const { o_ID } = req.params
+    const { o_ID } = req.params;
     try {
         if (!o_ID) {
             return res.status(400).send({
@@ -61,17 +72,30 @@ exports.getOrderID = async (req, res) => {
                 status: 0
             });
         }
-        const sql = ` SELECT  o.*,u.u_userName,  u.u_tel         
-            FROM orders o JOIN users u ON o.u_ID = u.u_ID
-            WHERE  o.o_ID = ?
+        const sql = `
+            SELECT 
+                o.*, 
+                u.u_userName, 
+                u.u_tel,
+                a.addr_Name,
+                a.addr_Detail,
+                a.latitude,
+                a.longitude
+            FROM orders o 
+            JOIN users u ON o.u_ID = u.u_ID
+            LEFT JOIN addresses a ON o.addr_ID = a.addr_ID
+            WHERE o.o_ID = ?
         `;
+
         const [result] = await conn.query(sql, [o_ID]);
+
         if (result.length === 0) {
             return res.status(404).send({
                 message: `Order ID ${o_ID} not found`,
                 status: 0
             });
         }
+
         return res.status(200).send({
             message: "Get Order Detail Success",
             data: result[0],
@@ -171,7 +195,7 @@ exports.updateOrder = async (req, res) => {
                 const [totalData] = await conn.query(
                     "SELECT SUM(i_Amount * 100) as total FROM ordersitems WHERE o_ID = ?", [o_ID]
                 );
-                
+
                 depositAmount = (totalData[0].total || 0) / 2;
 
                 updateFields.push("o_deposit_amount = ?", "o_deposit_status = ?");
