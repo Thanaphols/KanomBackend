@@ -348,7 +348,7 @@ exports.getUserOrders = async (req, res) => {
     const u_ID = req.userData.u_ID;
     try {
         const sql = `
-            SELECT o.o_ID, o.o_date, o.o_endDate, o.o_Status, o.o_image, 
+            SELECT o.o_ID, o.o_date, o.o_endDate, o.o_Status, 
                    p.p_Name, p.p_Img, p.p_Price, i.i_Amount
             FROM orders o
             JOIN ordersitems i ON o.o_ID = i.o_ID
