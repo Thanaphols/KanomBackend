@@ -12,7 +12,7 @@ exports.CountProduct = async (req, res) => {
         const customerPriceSQL = `SELECT users.u_userName AS customerName,
                                 SUM(ordersitems.i_Amount * product.p_Price) AS customerTotal FROM users 
                                 JOIN orders ON users.u_ID = orders.u_ID
-                                JOIN ordersItems ON orders.o_ID = ordersitems.o_ID
+                                JOIN ordersitems ON orders.o_ID = ordersitems.o_ID
                                 JOIN product ON ordersitems.p_ID = product.p_ID
                                 WHERE orders.o_Status = 1  
                                 GROUP BY users.u_ID, users.u_userName ORDER BY customerTotal DESC LIMIT 5`
@@ -22,7 +22,7 @@ exports.CountProduct = async (req, res) => {
                 DATE_FORMAT(orders.o_Date, '%a') AS label, 
                 SUM(ordersitems.i_Amount * product.p_Price) AS total
                 FROM orders
-                JOIN ordersItems ON orders.o_ID = ordersitems.o_ID
+                JOIN ordersitems ON orders.o_ID = ordersitems.o_ID
                 JOIN product ON ordersitems.p_ID = product.p_ID
                 WHERE orders.o_Status = 1 
                 AND orders.o_Date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
@@ -35,7 +35,7 @@ exports.CountProduct = async (req, res) => {
                 DATE_FORMAT(orders.o_Date, '%b') AS label, 
                 SUM(ordersitems.i_Amount * product.p_Price) AS total
                 FROM orders
-                JOIN ordersItems ON orders.o_ID = ordersitems.o_ID
+                JOIN ordersitems ON orders.o_ID = ordersitems.o_ID
                 JOIN product ON ordersitems.p_ID = product.p_ID
                 WHERE orders.o_Status = 1 
                 AND orders.o_Date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
@@ -45,7 +45,7 @@ exports.CountProduct = async (req, res) => {
         const todaySalesSQL = `
                 SELECT IFNULL(SUM(ordersitems.i_Amount * product.p_Price), 0) AS todayTotal 
                 FROM orders
-                JOIN ordersItems ON orders.o_ID = ordersitems.o_ID
+                JOIN ordersitems ON orders.o_ID = ordersitems.o_ID
                 JOIN product ON ordersitems.p_ID = product.p_ID
                 WHERE orders.o_Status = 1 
                 AND DATE(orders.o_Date) = CURDATE()
