@@ -7,7 +7,7 @@ require('dotenv').config();
 const http = require('http')
 const { Server } = require('socket.io')
 const LineService = require('./services/lineService');
-
+const path = require('path');
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
     windowMs: 0.3 * 60 * 1000,
@@ -35,7 +35,6 @@ io.on('connection', (socket) => {
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(limiter)
 
-//line webhook
 app.post('/webhook', LineService.handleWebhook);
 app.use('/uploads/slips', express.static('uploads/slips'));
 
@@ -51,9 +50,8 @@ app.use(
     })
 
 );
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.set('trust proxy', 1);
-
-
 //pic upload
 app.use('/uploads/products', express.static('uploads/products'));
 //Routers

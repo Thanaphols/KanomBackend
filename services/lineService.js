@@ -29,7 +29,6 @@ const sendReply = async (replyToken, text) => {
     }
 };
 
-// ฟังก์ชันโหลดรูปจาก LINE
 const downloadLineImage = async (messageId, fileName) => {
     const url = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
     const filePath = path.join(__dirname, '../uploads/slips', fileName);

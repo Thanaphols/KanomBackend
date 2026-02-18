@@ -1,5 +1,6 @@
 const express = require("express")
 const router = express.Router()
 const dashboardControllers = require('../controllers/dashboardController')
-router.get('/dashboardData',dashboardControllers.CountProduct)
+const Middlewere = require('../middleware/validate')
+router.get('/dashboardData',Middlewere.validateToken,dashboardControllers.CountProduct)
 module.exports = router

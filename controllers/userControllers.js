@@ -4,29 +4,53 @@ const jwt = require('jsonwebtoken')
 
 exports.getUser = async (req, res) => {
    try {
+      // 1. ใช้ SQL เพื่อรวบรวมที่อยู่ของลูกค้าแต่ละคนเป็นกลุ่มเดียว (Array-like string)
       const selectSQL = `
-            SELECT * FROM users
+            SELECT 
+                u.u_ID, 
+                u.u_userName, 
+                u.u_role, 
+                u.u_tel,
+                -- ดึงชื่อที่อยู่ (addr_Name) และ รายละเอียด (addr_Detail) มารวมกัน
+                GROUP_CONCAT(CONCAT(a.addr_Name, ': ', a.addr_Detail) SEPARATOR ' || ') as concatenated_addresses
+            FROM users u
+            LEFT JOIN addresses a ON u.u_ID = a.u_ID
+            GROUP BY u.u_ID
         `;
-      const [result] = await conn.query(selectSQL, []);
+      const [result] = await conn.query(selectSQL);
 
       if (result.length === 0) {
          return res.status(404).send({ message: "ไม่พบข้อมูลผู้ใช้งาน", status: 0 });
       }
-      return res.status(200).send({ message: "ดึงข้อมูลสำเร็จ", data: result, status: 1 });
+
+      // 2. แปลงข้อความที่รวมมาให้กลายเป็น Array จริงๆ เพื่อส่งให้ Frontend ไปวนลูป
+      const data = result.map(user => ({
+         ...user,
+         address_list: user.concatenated_addresses 
+            ? user.concatenated_addresses.split(' || ') 
+            : []
+      }));
+
+      return res.status(200).send({ message: "ดึงข้อมูลสำเร็จ", data, status: 1 });
    } catch (error) {
       console.error(error);
-      return res.status(500).send({ message: "Internal Server Error", status: 0 });
+      return res.status(500).send({ message: "เกิดข้อผิดพลาดที่เซิร์ฟเวอร์", status: 0 });
    }
 }
 exports.editProfile = async (req, res) => {
    const {
       u_ID, u_userName, u_passWord, u_role,
-      de_tel, de_address, latitude, longitude
+      u_tel, // เปลี่ยนจาก de_tel เป็น u_tel ตามตาราง users
+      addr_ID, addr_Name, addr_Detail, latitude, longitude // ข้อมูลสำหรับตาราง addresses
    } = req.body;
 
    try {
-      let userSQL = `UPDATE users SET u_userName = ?, u_role = ?`;
-      let userParams = [u_userName, u_role];
+      await conn.query('START TRANSACTION'); // แนะนำให้ใช้ Transaction เพื่อความปลอดภัยครับ
+
+      // 1. อัปเดตตาราง users (ชื่อ, บทบาท, เบอร์โทร และรหัสผ่าน)
+      let userSQL = `UPDATE users SET u_userName = ?, u_role = ?, u_tel = ?`;
+      let userParams = [u_userName, u_role, u_tel];
+
       if (u_passWord && u_passWord.trim() !== "") {
          const salt = await bcrypt.genSalt(10);
          const hashedPassword = await bcrypt.hash(u_passWord, salt);
@@ -36,14 +60,20 @@ exports.editProfile = async (req, res) => {
       userSQL += ` WHERE u_ID = ?`;
       userParams.push(u_ID);
       await conn.query(userSQL, userParams);
-      const infoSQL = `
-            UPDATE usersdetail 
-            SET de_tel = ?, de_address = ?, latitude = ?, longitude = ? 
-            WHERE u_ID = ?
+
+      // 2. อัปเดตตาราง addresses (เฉพาะที่อยู่ที่ถูกเลือกแก้ไข หรือที่อยู่หลัก)
+      // หมายเหตุ: กรณีนี้เราจะอัปเดตที่อยู่ที่มี addr_ID ตรงกับที่ส่งมา
+      const addressSQL = `
+            UPDATE addresses 
+            SET addr_Name = ?, addr_Detail = ?, latitude = ?, longitude = ? 
+            WHERE addr_ID = ? AND u_ID = ?
         `;
-      await conn.query(infoSQL, [de_tel, de_address, latitude, longitude, u_ID]);
-      return res.status(200).send({ message: "แก้ไขข้อมูลผู้ใช้งานสำเร็จ", status: 1 });
+      await conn.query(addressSQL, [addr_Name, addr_Detail, latitude, longitude, addr_ID, u_ID]);
+
+      await conn.query('COMMIT');
+      return res.status(200).send({ message: "แก้ไขข้อมูลสำเร็จ", status: 1 });
    } catch (error) {
+      await conn.query('ROLLBACK');
       console.error(error);
       return res.status(500).send({ message: "แก้ไขข้อมูลไม่สำเร็จ", status: 0 });
    }

@@ -150,13 +150,13 @@ exports.checkLogin = (req, res) => {
 
 exports.handleLineAuth = async (req, res) => {
     const { u_line_id, u_userName, de_tel, de_address, latitude, longitude } = req.body;
-
     try {
         const [users] = await conn.query(
             "SELECT u_ID, u_role, u_userName FROM users WHERE u_line_id = ?",
             [u_line_id]
         );
-
+        console.log("LINE ID from LIFF:", u_line_id);
+        console.log("Search Result:", users.length);
         if (users.length > 0) {
             const user = users[0];
             const token = jwt.sign(
