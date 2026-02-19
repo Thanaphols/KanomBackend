@@ -36,28 +36,31 @@ exports.getallProduct = async (req, res) => {
 // exports.addProduct
 exports.addProduct = async (req, res) => {
     upload(req, res, async (err) => {
-        if (err) return res.status(500).send({ message: "เกิดข้อผิดพลาดในการอัปโหลดไฟล์", status: 0 }); //
-
+        if (err) return res.status(500).send({ message: "เกิดข้อผิดพลาดในการอัปโหลดไฟล์", status: 0 });
         const { p_Name, p_Detail, p_Price, c_ID } = req.body;
-        const p_Img = req.file ? req.file.filename : null;
+        const p_Img = req.file ? req.file.filename : 'noimg.png'; 
+        
         const io = req.app.get('io');
 
         try {
             if (!p_Name || !p_Detail || !p_Price || !c_ID) {
                 if (req.file) fs.unlinkSync(req.file.path);
-                return res.status(400).send({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" }); //
+                return res.status(400).send({ message: "กรุณากรอกข้อมูลให้ครบถ้วน", status: 0 });
             }
 
             const SQL = `INSERT INTO product (p_Name, p_Detail, p_Price, c_ID, p_Img) VALUES (?, ?, ?, ?, ?)`;
             const [result] = await conn.query(SQL, [p_Name, p_Detail, p_Price, c_ID, p_Img]);
 
-            if (result.affectedRows === 0) return res.status(401).send({ message: "ไม่สามารถเพิ่มข้อมูลสินค้าได้", status: 0 }); //
-
+            if (result.affectedRows === 0) {
+                return res.status(401).send({ message: "ไม่สามารถเพิ่มข้อมูลสินค้าได้", status: 0 });
+            }
             io.emit('refreshProduct');
-            return res.status(201).send({ message: "เพิ่มสินค้าเรียบร้อยแล้ว", status: 1 }); //
+            return res.status(201).send({ message: "เพิ่มสินค้าเรียบร้อยแล้ว", status: 1 });
+            
         } catch (error) {
+            console.error("Add Product Error:", error);
             if (req.file) fs.unlinkSync(req.file.path);
-            return res.status(500).send({ message: 'เกิดข้อผิดพลาดภายในระบบ', status: 0 }); //
+            return res.status(500).send({ message: 'เกิดข้อผิดพลาดภายในระบบ', status: 0 });
         }
     });
 };
