@@ -267,8 +267,8 @@ exports.updateOrder = async (req, res) => {
             updateFields.push("o_deposit_amount = ?");
             updateValues.push(depositAmount);
 
-            // ถ้าสถานะยังเป็น "ไม่ระบุ (0)" ให้เด้งเป็น "รอชำระ (1)"
-            if (o_deposit_status === 0) {
+            const currentStatus = o_deposit_status !== undefined ? Number(o_deposit_status) : 0;
+            if (currentStatus === 0) {
                 updateFields.push("o_deposit_status = ?");
                 updateValues.push(1);
             }
