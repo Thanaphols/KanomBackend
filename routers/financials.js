@@ -1,9 +1,17 @@
 const express = require("express")
 const router = express.Router()
-const finalcialController= require('../controllers/financialController')
+const financialController= require('../controllers/financialController')
 const Middlewere = require('../middleware/validate')
-router.get('/',Middlewere.validateToken,finalcialController.getFinan)
-router.post('/addCost',Middlewere.validateToken,finalcialController.addFinancial)
-router.patch('/updateFinan',Middlewere.validateToken,finalcialController.updateFinancial)
-router.delete('/deleteFinan',Middlewere.validateToken,finalcialController.deleteFinancial)
+router.get('/',Middlewere.validateToken,financialController.getFinan)
+router.post('/addCost',Middlewere.validateToken,financialController.addFinancial)
+router.patch('/updateFinan',Middlewere.validateToken,financialController.updateFinancial)
+router.delete('/deleteFinan',Middlewere.validateToken,financialController.deleteFinancial)
+
+router.get('/logs/:f_ID', Middlewere.validateToken, financialController.getFinancialLogs)
+
+router.get('/recipes', Middlewere.validateToken, financialController.getAllRecipes)
+router.post('/recipes', Middlewere.validateToken, financialController.addRecipe)
+router.put('/recipes/:r_ID', Middlewere.validateToken, financialController.updateRecipe)
+router.delete('/recipes/:r_ID', Middlewere.validateToken, financialController.deleteRecipe)
+
 module.exports = router

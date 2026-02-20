@@ -1,6 +1,17 @@
 //controllers/orderControllers.js
 const conn = require('../db')
 const LineService = require('../services/lineService');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const storage = multer.diskStorage({
+    destination: './uploads/slips', // อย่าลืมสร้าง Folder นี้ในโปรเจกต์ด้วยนะครับ
+    filename: (req, file, cb) => {
+        cb(null, `slip-${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const upload = multer({ storage: storage }).single('slip');
 exports.getallOrder = async (req, res) => {
     try {
         const orderSQL = `
@@ -111,47 +122,81 @@ exports.getOrderID = async (req, res) => {
 }
 
 exports.addOrder = async (req, res) => {
-    const { cart, o_endDate, u_ID } = req.body
-    const io = req.app.get('io')
-    try {
-        if (!u_ID || !o_endDate) {
-            return res.status(400).send({ message: `User ID is Missing`, status: 0 })
-        }
-        const orderSQL = `INSERT INTO orders ( u_ID,o_date,o_endDate ) VALUE ( ?, CURRENT_TIMESTAMP,? ) `
-        const [orderResult] = await conn.query(orderSQL, [u_ID, o_endDate])
-        if (orderResult.affectedRows === 0) {
-            return res.stats(400).send({ message: `Can't Insert Order `, status: 0 })
-        }
-        const o_ID = orderResult.insertId
-        for (const item of cart) {
-            const orderItemSQL = `INSERT INTO ordersitems (o_ID,p_ID,i_Amount ) VALUE (?,?,?) `
-            const [orderItemResult] = await conn.query(orderItemSQL, [o_ID, item.p_ID, item.i_Amount, item.p_Price])
-            if (orderItemResult.affectedRows === 0) {
-                return res.status(400).send({ message: `Can't Insert Order items`, status: 0 })
-            }
-        }
+    // const { cart, o_endDate, u_ID } = req.body;
+    // const io = req.app.get('io');
+    // try {
+    //     if (!u_ID || !o_endDate) {
+    //         return res.status(400).send({ message: `User ID is Missing`, status: 0 });
+    //     }
 
-        const itemsSummary = cartItems.map(item => `${item.p_Name} x${item.i_Amount}`).join(', ');
+    //     const [settings] = await conn.query("SELECT s_value, start_date, end_date FROM system_settings WHERE s_key = 1");
+    //     const settingsData = settings[0];
+    //     console.log("1. SettingsจากDB:", settingsData);
+    //     const depositPercent = settingsData ? parseInt(settingsData.s_value) : 50;
+    //     const dbStart = settingsData?.start_date;
+    //     const dbEnd = settingsData?.end_date;
 
-        const lineResult = await LineService.sendOrderConfirmation(u_line_id, {
-            userName: u_userName,
-            itemsSummary: itemsSummary,
-            totalPrice: totalPrice
-        });
+    //     let isInPeriod = false;
+    //     if (dbStart && dbEnd) {
+    //         const now = new Date();
+    //         const start = new Date(dbStart);
+    //         const end = new Date(dbEnd);
 
-        if (lineResult.success) {
-            res.json({ status: 1, message: "บันทึกออเดอร์และส่ง LINE สำเร็จ" });
-        } else {
-            res.json({ status: 1, message: "บันทึกออเดอร์สำเร็จ (LINE ขัดข้อง)" });
-        }
+    //         start.setHours(0, 0, 0, 0);
+    //         end.setHours(23, 59, 59, 999);
 
-        io.emit('refreshOrders')
-        return res.status(201).send({ message: `Order Success`, status: 1 })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 })
-    }
-}
+    //         isInPeriod = now >= start && now <= end;
+    //         console.log("Check Deposit Period:", { isInPeriod, start, end, now });
+    //         console.log("2. ตรวจสอบเงื่อนไขวันที่:", {
+    //             isInPeriod: isInPeriod,
+    //             currentTime: now.toLocaleString(),
+    //             startTime: start.toLocaleString(),
+    //             endTime: end.toLocaleString()
+    //         });
+    //     }
+
+    //     const o_is_deposit_required = isInPeriod ? 1 : 0;
+    //     const o_deposit_status = isInPeriod ? 1 : 0;
+
+    //     const orderSQL = `INSERT INTO orders (u_ID, o_date, o_endDate, o_is_deposit_required, o_deposit_status) VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?)`;
+    //     const [orderResult] = await conn.query(orderSQL, [u_ID, o_endDate, o_is_deposit_required, o_deposit_status]);
+
+    //     const o_ID = orderResult.insertId;
+    //     let totalPrice = 0;
+
+    //     for (const item of cart) {
+    //         const [product] = await conn.query("SELECT p_Price FROM product WHERE p_ID = ?", [item.p_ID]);
+    //         const price = product[0]?.p_Price || 0;
+
+    //         const orderItemSQL = `INSERT INTO ordersitems (o_ID, p_ID, i_Amount) VALUE (?,?,?)`;
+    //         await conn.query(orderItemSQL, [o_ID, item.p_ID, item.i_Amount]);
+
+    //         totalPrice += (price * item.i_Amount);
+    //     }
+    //     console.log("3. ราคาสุทธิ (totalPrice):", totalPrice);
+    //     if (isInPeriod) {
+    //         const depositAmount = totalPrice * (depositPercent / 100);
+    //         console.log("4. ยอดมัดจำที่คำนวณได้:", depositAmount);
+    //         await conn.query("UPDATE orders SET o_deposit_amount = ? WHERE o_ID = ?", [depositAmount, o_ID]);
+
+    //         const [user] = await conn.query("SELECT u_line_id FROM users WHERE u_ID = ?", [u_ID]);
+    //         if (user[0]?.u_line_id) {
+    //             await LineService.sendDepositRequest(user[0].u_line_id, {
+    //                 o_ID: o_ID,
+    //                 amount: depositAmount
+    //             });
+    //         }
+    //     } else {
+    //         console.log("5. ระบบข้ามการมัดจำเพราะ isInPeriod เป็น false");
+    //     }
+
+    //     io.emit('refreshOrders');
+    //     return res.status(201).send({ message: `Order Success`, status: 1 });
+    // } catch (error) {
+    //     console.error("Add Order Error:", error);
+    //     return res.status(500).send({ message: `Somethings Went Wrong`, status: 0 });
+    // }
+};
 
 
 
@@ -162,16 +207,36 @@ exports.updateOrder = async (req, res) => {
     let depositAmount = 0;
 
     try {
-        const isSkippingDeposit = o_is_deposit_required === 0;
+        // --- 1. ดึงค่า Config ทั้งหมด (Percent, Start, End) ---
+        const [settings] = await conn.query("SELECT s_key, s_value FROM system_settings");
+        const config = settings.reduce((acc, row) => ({ ...acc, [row.s_key]: row.s_value }), {});
+
+        const depositPercent = config.deposit_percent ? parseInt(config.deposit_percent) : 50;
+        const depositMultiplier = depositPercent / 100;
+        const startDate = config.deposit_start_date ? new Date(config.deposit_start_date) : null;
+        const endDate = config.deposit_end_date ? new Date(config.deposit_end_date) : null;
+
+        // --- 2. เช็คว่าออเดอร์นี้ "ต้องมัดจำ" หรือไม่ ---
+        // ดึงวันที่สร้างออเดอร์มาเช็คกับช่วงเวลาที่ตั้งไว้
+        const [orderData] = await conn.query("SELECT o_date FROM orders WHERE o_ID = ?", [o_ID]);
+        const orderDate = new Date(orderData[0].o_date);
+
+        // เงื่อนไข: อยู่ในช่วงวันที่กำหนดหรือไม่?
+        const isInPeriod = startDate && endDate && orderDate >= startDate && orderDate <= endDate;
+
+        // สรุปนโยบาย: ถ้าแอดมินสั่งเปิด OR วันที่อยู่ในช่วงพิเศษ = ต้องมัดจำ
+        const mustDeposit = o_is_deposit_required === 1 || isInPeriod;
+
+        const isSkippingDeposit = !mustDeposit; // ถ้าไม่เข้าเงื่อนไขมัดจำเลย
         const isDepositFinished = o_deposit_status === 3;
 
-        if ((isSkippingDeposit || isDepositFinished) && !o_endDate) {
+        if ((!mustDeposit || isDepositFinished) && !o_endDate) {
             return res.status(400).send({ message: `กรุณากำหนดวันจัดส่งสินค้า`, status: 0 });
         }
 
         await conn.query('START TRANSACTION');
 
-
+        // ... (ส่วนอัปเดต cart เหมือนเดิมของพี่) ...
         if (cart && cart.length > 0) {
             for (const item of cart) {
                 const orderItemSQL = `UPDATE ordersitems SET i_Amount = ? WHERE i_ID = ? `;
@@ -187,46 +252,52 @@ exports.updateOrder = async (req, res) => {
             updateValues.push(o_endDate);
         }
 
-        if (o_is_deposit_required !== undefined) {
+        // --- 3. จัดการสถานะและยอดมัดจำ ---
+        if (mustDeposit) {
+            // บังคับลงฟิลด์นโยบายเป็น 1 (เพื่อให้หน้าบ้านรู้ว่าต้องมัดจำ)
             updateFields.push("o_is_deposit_required = ?");
-            updateValues.push(o_is_deposit_required);
+            updateValues.push(1);
 
-            if (o_is_deposit_required === 1 && o_deposit_status !== 3) {
-                const [totalData] = await conn.query(
-                    "SELECT SUM(i_Amount * 100) as total FROM ordersitems WHERE o_ID = ?", [o_ID]
-                );
+            const [totalData] = await conn.query(
+                "SELECT SUM(i_Amount * 100) as total FROM ordersitems WHERE o_ID = ?", [o_ID]
+            );
 
-                depositAmount = (totalData[0].total || 0) / 2;
+            depositAmount = (totalData[0].total || 0) * depositMultiplier;
 
-                updateFields.push("o_deposit_amount = ?", "o_deposit_status = ?");
-                updateValues.push(depositAmount, 1);
-            }
-            else if (o_is_deposit_required === 0) {
+            updateFields.push("o_deposit_amount = ?");
+            updateValues.push(depositAmount);
+
+            // ถ้าสถานะยังเป็น "ไม่ระบุ (0)" ให้เด้งเป็น "รอชำระ (1)"
+            if (o_deposit_status === 0) {
                 updateFields.push("o_deposit_status = ?");
-                updateValues.push(0);
+                updateValues.push(1);
             }
+        } else {
+            // ถ้าไม่อยู่ในช่วงเวลา และแอดมินก็ไม่สั่งมัดจำ -> เคลียร์เป็น 0
+            updateFields.push("o_is_deposit_required = ?", "o_deposit_status = ?", "o_deposit_amount = ?");
+            updateValues.push(0, 0, 0);
         }
 
         updateValues.push(o_ID);
         const orderSQL = `UPDATE orders SET ${updateFields.join(", ")} WHERE o_ID = ?`;
         await conn.query(orderSQL, updateValues);
 
+        await conn.query('COMMIT');
+
+        // --- 4. ส่ง LINE (เหมือนเดิม แต่ใช้ตัวแปร mustDeposit แทน) ---
         const [orderInfo] = await conn.query(`
             SELECT u.u_line_id FROM orders o 
             JOIN users u ON o.u_ID = u.u_ID WHERE o.o_ID = ?
         `, [o_ID]);
 
-        await conn.query('COMMIT');
-
         const customer = orderInfo[0];
         if (customer && customer.u_line_id) {
-            if (o_is_deposit_required === 1 && o_deposit_status !== 3) {
+            if (mustDeposit && o_deposit_status === 1) {
                 await LineService.sendDepositRequest(customer.u_line_id, {
                     o_ID: o_ID,
-                    amount: depositAmount // ตัวแปรที่คำนวณไว้ด้านบน
+                    amount: depositAmount
                 });
             } else if (o_endDate) {
-
                 await LineService.sendDeliveryUpdate(customer.u_line_id, {
                     o_ID: o_ID,
                     o_endDate: new Date(o_endDate).toLocaleDateString('th-TH', {
@@ -241,7 +312,7 @@ exports.updateOrder = async (req, res) => {
 
     } catch (error) {
         await conn.query('ROLLBACK');
-        console.log(error);
+        console.error(error);
         return res.status(500).send({ message: `เกิดข้อผิดพลาด`, status: 0 });
     }
 };
@@ -349,16 +420,18 @@ exports.getUserOrders = async (req, res) => {
     try {
         const sql = `
             SELECT o.o_ID, o.o_date, o.o_endDate, o.o_Status, 
-                   p.p_Name, p.p_Img, p.p_Price, i.i_Amount
+                   o.o_deposit_status, o.o_deposit_amount, o.is_deleted,
+                   p.p_Name, p.p_Img, p.p_Price, i.i_Amount, p.p_ID
             FROM orders o
             JOIN ordersitems i ON o.o_ID = i.o_ID
             JOIN product p ON i.p_ID = p.p_ID
-            WHERE o.u_ID = ? AND o.is_deleted = 0
+            WHERE o.u_ID = ? 
             ORDER BY o.o_date DESC
         `;
         const [results] = await conn.query(sql, [u_ID]);
         res.status(200).json({ status: 1, data: results });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ status: 0, message: "Error" });
     }
 };
@@ -391,6 +464,27 @@ exports.cancelOrder = async (req, res) => {
     }
 };
 
+exports.restoreOrder = async (req, res) => {
+    const { o_ID } = req.params;
+    const io = req.app.get('io');
+
+    try {
+        const [result] = await conn.query(
+            "UPDATE orders SET is_deleted = 0 WHERE o_ID = ?",
+            [o_ID]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "ไม่พบออเดอร์", status: 0 });
+        }
+
+        io.emit('refreshOrders');
+        return res.status(200).json({ message: "กู้คืนออเดอร์สำเร็จ", status: 1 });
+    } catch (error) {
+        res.status(500).json({ status: 0, message: "Server Error" });
+    }
+};
+
 exports.verifyDeposit = async (req, res) => {
     const { o_ID } = req.body;
     const io = req.app.get('io');
@@ -406,5 +500,64 @@ exports.verifyDeposit = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: "Error", status: 0 });
     }
+};
+
+exports.rejectDeposit = async (req, res) => {
+    const { o_ID } = req.body;
+    const io = req.app.get('io');
+
+    try {
+        const [order] = await conn.query("SELECT o_deposit_slip FROM orders WHERE o_ID = ?", [o_ID]);
+
+        if (order.length > 0 && order[0].o_deposit_slip) {
+            const filePath = path.join(__dirname, '..', 'uploads', 'slips', order[0].o_deposit_slip);
+
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        await conn.query(
+            "UPDATE orders SET o_deposit_status = 1, o_deposit_slip = NULL WHERE o_ID = ?",
+            [o_ID]
+        );
+        const [orderInfo] = await conn.query(`
+    SELECT u.u_line_id, o.o_deposit_amount 
+    FROM orders o JOIN users u ON o.u_ID = u.u_ID 
+    WHERE o.o_ID = ?`, [o_ID]);
+
+        if (orderInfo[0]?.u_line_id) {
+            await LineService.sendDepositRequest(orderInfo[0].u_line_id, {
+                o_ID: o_ID,
+                amount: orderInfo[0].o_deposit_amount,
+                isReject: true
+            });
+        }
+        io.emit('refreshOrders');
+        res.status(200).json({ status: 1, message: "ปฏิเสธสลิปและลบรูปภาพเรียบร้อย" });
+    } catch (error) {
+        console.error("Reject Error Detail:", error);
+        res.status(500).json({ status: 0, message: "Reject Error" });
+    }
+
+};
+
+exports.uploadSlip = (req, res) => {
+    upload(req, res, async (err) => {
+        if (err) return res.status(500).json({ status: 0, message: "Upload Error" });
+
+        const { o_ID } = req.body;
+        const slipImage = req.file.filename;
+
+        try {
+            // อัปเดตชื่อไฟล์รูปสลิป และเปลี่ยนสถานะมัดจำเป็น 2 (รอตรวจสอบ)
+            const sql = `UPDATE orders SET o_deposit_slip = ?, o_deposit_status = 2 WHERE o_ID = ?`;
+            await conn.query(sql, [slipImage, o_ID]);
+
+            res.status(200).json({ status: 1, message: "อัปโหลดสำเร็จ" });
+        } catch (error) {
+            res.status(500).json({ status: 0, message: "Database Error" });
+        }
+    });
 };
 

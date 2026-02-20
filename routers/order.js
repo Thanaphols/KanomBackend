@@ -13,5 +13,8 @@ router.get('/getdateEnd/:o_ID',Middlewere.validateToken,orderController.getdateE
 router.patch(`/updateOrder`,Middlewere.validateToken,orderController.updateOrder)
 router.get('/sumPrice/:o_ID',Middlewere.validateToken,orderController.sumPrice)
 router.get('/getUserOrders',Middlewere.validateToken,orderController.getUserOrders)
-router.delete('/cancelOrder/:o_ID',Middlewere.validateToken,orderController.cancelOrder)
+router.patch('/cancelOrder/:o_ID',Middlewere.validateToken,orderController.cancelOrder)
+router.patch('/restoreOrder/:o_ID',Middlewere.validateToken,orderController.restoreOrder)
+router.patch('/rejectDeposit',Middlewere.validateToken,orderController.rejectDeposit)
+router.post('/uploadSlip', Middlewere.validateToken, orderController.uploadSlip);
 module.exports = router

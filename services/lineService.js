@@ -285,27 +285,35 @@ const LineService = {
     },
 
     sendDepositRequest: async (u_line_id, depositData) => {
+        // กำหนดข้อความตามสถานการณ์
+        const headerTitle = depositData.isReject ? '❌ สลิปไม่ถูกต้อง' : '💰 แจ้งยอดมัดจำ 50%';
+        const headerColor = depositData.isReject ? '#FF5252' : '#FFC107';
+        const noticeText = depositData.isReject
+            ? 'รูปสลิปที่ส่งมาไม่ถูกต้อง/สลิปปลอม กรุณาตรวจสอบและโอนใหม่อีกครั้งค่ะ'
+            : 'ออเดอร์ได้รับการยืนยันแล้ว รบกวนชำระมัดจำเพื่อลงคิวจัดส่งนะคะ';
         const message = {
             type: 'flex',
-            altText: 'แจ้งยอดมัดจำจากร้านฟาร์มขนม',
+            altText: depositData.isReject ? 'สลิปมัดจำไม่ถูกต้อง' : 'แจ้งยอดมัดจำจากร้านฟาร์มขนม',
             contents: {
                 type: 'bubble',
-                styles: { header: { backgroundColor: '#FFC107' } },
+                styles: { header: { backgroundColor: headerColor } },
                 header: {
                     type: 'box', layout: 'vertical',
-                    contents: [{ type: 'text', text: '💰 แจ้งยอดมัดจำ 50%', weight: 'bold', color: '#000000', size: 'lg' }]
+                    contents: [{ type: 'text', text: headerTitle, weight: 'bold', color: '#FFFFFF', size: 'lg' }]
                 },
                 body: {
                     type: 'box', layout: 'vertical',
                     contents: [
                         { type: 'text', text: `ออเดอร์ #${depositData.o_ID}`, size: 'xs', color: '#aaaaaa' },
+                        { type: 'text', text: noticeText, margin: 'md', size: 'sm', wrap: true, color: depositData.isReject ? '#cc0000' : '#000000', weight: depositData.isReject ? 'bold' : 'regular' },
+                        { type: 'separator', margin: 'md' },
                         { type: 'text', text: `ยอดมัดจำที่ต้องโอน:`, margin: 'md', size: 'sm' },
                         { type: 'text', text: `${depositData.amount.toLocaleString()} บาท`, weight: 'bold', size: 'xxl', color: '#cc0000' },
                         { type: 'separator', margin: 'lg' },
                         { type: 'text', text: '🏦 พร้อมเพย์', size: 'sm', margin: 'md', weight: 'bold' },
                         { type: 'text', text: 'เลขบัญชี: 0926166623', size: 'md' },
                         { type: 'text', text: 'ชื่อบัญชี: นายวชิรวิทย์ ชื่นจิตร', size: 'sm' },
-                        { type: 'text', text: '* รบกวนโอนและส่งสลิปภายใน 24 ชม. เพื่อลงคิวจัดส่งนะคะ', size: 'xs', color: '#aaaaaa', margin: 'lg', wrap: true }
+                        { type: 'text', text: '* หากมีข้อสงสัยสามารถสอบถามแอดมินได้ทันทีค่ะ', size: 'xs', color: '#aaaaaa', margin: 'lg', wrap: true }
                     ]
                 }
             }
