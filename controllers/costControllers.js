@@ -1,7 +1,7 @@
 const conn = require('../db')
 exports.getCost= async (req,res)=>{
    try {
-        const sql = "SELECT * FROM costs ORDER BY co_ID DESC";
+        const sql = "SELECT * FROM costs ORDER BY co_ID ASC";
         
        const [results] = await conn.query(sql);
       const data = results;
