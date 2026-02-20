@@ -438,3 +438,37 @@ exports.deleteRecipe = async (req, res) => {
         res.status(500).json({ status: 0, message: error.message });
     }
 };
+
+// ฟังก์ชันสำหรับดึงประวัติการแก้ไขของรายการนั้นๆ
+exports.getAllFinancialLogs = async (req, res) => {
+    try {
+        const SQL = `
+            SELECT 
+                l.log_ID, 
+                l.f_ID, 
+                l.old_price, 
+                l.new_price, 
+                l.action_type, 
+                l.changed_at,
+                u.u_userName as admin_name,
+                f.f_Date as original_date
+            FROM financial_logs l
+            LEFT JOIN users u ON l.u_ID = u.u_ID
+            LEFT JOIN financials f ON l.f_ID = f.f_ID
+            ORDER BY l.changed_at DESC
+        `;
+
+        const [logs] = await conn.query(SQL);
+
+        return res.status(200).send({
+            status: 1,
+            data: logs
+        });
+    } catch (error) {
+        console.error("Get All Logs Error:", error);
+        return res.status(500).send({
+            message: "เกิดข้อผิดพลาดในการดึงข้อมูลประวัติทั้งหมด",
+            status: 0
+        });
+    }
+};
