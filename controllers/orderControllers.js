@@ -21,6 +21,8 @@ exports.getallOrder = async (req, res) => {
                 orders.o_endDate, 
                 orders.o_Status, 
                 orders.is_deleted,
+                
+                orders.o_deposit_status,
                 users.u_userName, 
                 users.u_tel,
                 addresses.addr_Detail, 
