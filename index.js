@@ -65,6 +65,7 @@ const RouterCost = require('./routers/cost');
 const Routerfinancials = require('./routers/financials');
 const RouterStore = require('./routers/store');
 const RouterDashboard = require('./routers/dashboard');
+const RouterAdmin = require('./routers/admin');
 const { Socket } = require('dgram');
 const apiRouter = express.Router();
 apiRouter.use('/cart', RouterCart)
@@ -77,6 +78,7 @@ apiRouter.use('/finan', Routerfinancials)
 apiRouter.use('/stores', RouterStore)
 apiRouter.use('/auth', RouterAuth)
 apiRouter.use('/dashboard', RouterDashboard)
+apiRouter.use('/adminSetting', RouterAdmin)
 app.use('/api', apiRouter)
 
 app.get('/', (req, res) => {

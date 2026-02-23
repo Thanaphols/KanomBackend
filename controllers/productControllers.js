@@ -54,7 +54,7 @@ exports.addProduct = async (req, res) => {
             if (result.affectedRows === 0) {
                 return res.status(401).send({ message: "ไม่สามารถเพิ่มข้อมูลสินค้าได้", status: 0 });
             }
-            io.emit('refreshProduct');
+            io.emit('refreshProducts');
             return res.status(201).send({ message: "เพิ่มสินค้าเรียบร้อยแล้ว", status: 1 });
             
         } catch (error) {
@@ -112,7 +112,7 @@ exports.updateProduct = async (req, res) => {
             const updateSQL = `UPDATE product SET p_Name = ?, p_Detail = ?, p_Price = ?, c_ID = ?, p_Img = ? WHERE p_ID = ?`;
             await conn.query(updateSQL, [p_Name, p_Detail, p_Price, c_ID, p_Img, p_ID]);
 
-            io.emit('refreshProduct');
+            io.emit('refreshProducts');
             return res.status(200).send({ message: "แก้ไขข้อมูลสินค้าสำเร็จ", status: 1 }); //
         } catch (error) {
             return res.status(500).send({ message: 'เกิดข้อผิดพลาดในการแก้ไขข้อมูลสินค้า', status: 0 }); //
@@ -139,7 +139,7 @@ exports.deleteProduct = async (req, res) => {
         if (deleteResult.affectedRows === 0) {
             return res.status(400).send({ message: `ไม่สามารถลบข้อมูลสินค้าได้`, status: 0 }) //
         }
-        io.emit('refreshProduct')
+        io.emit('refreshProducts')
         return res.status(200).send({ message: `ลบข้อมูลสินค้าเรียบร้อยแล้ว`, status: 1 }) //
     } catch (error) {
         console.log(error)
