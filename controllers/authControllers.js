@@ -107,27 +107,25 @@ exports.updateProfile = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
     const { u_ID } = req.body
-
-    return res.status(200).send({ message: `Delete User ID : ${u_ID} Unuccessfully`, status: 0 })
-    // try {
-    //     if (!u_ID) {
-    //         return res.status(400).send({message: `User ID is Missing` , status : 0})
-    //     }
-    //     const checkUserSQL = `SELECT * FROM users WHERE u_ID = ?`
-    //     const [checkUserResult] = await conn.query(checkUserSQL,u_ID)
-    //     if (checkUserResult.length === 0) {
-    //         return res.status(404).send({message : `Unknow User ID : ${u_ID}` , status : 0})
-    //     }
-    //     const deleteUserSQL = `DELETE FROM users WHERE u_ID = ?`
-    //     const [deleteUserResult] = await conn.query(deleteUserSQL,u_ID)
-    //     if (deleteUserResult.affectedRows === 0) {
-    //         return res.status(400).send({message : `Delete User ID ${u_ID} Unsuccessfully` , status : 0})
-    //     }
-    //      return res.status(200).send({message : `Delete User ID ${u_ID} Successfully` , status : 1})
-    // } catch (error) {
-    //     console.log(error)
-    //     return res.statuts(500).send({message : `Something Went Wrong` , status : 0})
-    // }
+    try {
+        if (!u_ID) {
+            return res.status(400).send({message: `User ID is Missing` , status : 0})
+        }
+        const checkUserSQL = `SELECT * FROM users WHERE u_ID = ?`
+        const [checkUserResult] = await conn.query(checkUserSQL,u_ID)
+        if (checkUserResult.length === 0) {
+            return res.status(404).send({message : `Unknow User ID : ${u_ID}` , status : 0})
+        }
+        const deleteUserSQL = `DELETE FROM users WHERE u_ID = ?`
+        const [deleteUserResult] = await conn.query(deleteUserSQL,u_ID)
+        if (deleteUserResult.affectedRows === 0) {
+            return res.status(400).send({message : `Delete User ID ${u_ID} Unsuccessfully` , status : 0})
+        }
+         return res.status(200).send({message : `Delete User ID ${u_ID} Successfully` , status : 1})
+    } catch (error) {
+        console.log(error)
+        return res.statuts(500).send({message : `Something Went Wrong` , status : 0})
+    }
 }
 
 
