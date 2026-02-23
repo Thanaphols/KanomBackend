@@ -21,8 +21,8 @@ exports.getallOrder = async (req, res) => {
                 orders.o_endDate, 
                 orders.o_Status, 
                 orders.is_deleted,
-                
                 orders.o_deposit_status,
+                orders.o_is_deposit_required,
                 users.u_userName, 
                 users.u_tel,
                 addresses.addr_Detail, 
@@ -74,7 +74,6 @@ exports.orderDetail = async (req, res) => {
         return res.status(500).send({ message: "Somethings Went Wrong", status: 0 })
     }
 }
-
 
 exports.getOrderID = async (req, res) => {
     const { o_ID } = req.params;
@@ -205,9 +204,7 @@ exports.addOrder = async (req, res) => {
 exports.updateOrder = async (req, res) => {
     const { cart, o_ID, o_endDate, o_is_deposit_required, o_deposit_status } = req.body;
     const io = req.app.get('io');
-
     let depositAmount = 0;
-
     try {
         // --- 1. ดึงค่า Config ทั้งหมด (Percent, Start, End) ---
         const [settings] = await conn.query("SELECT s_key, s_value FROM system_settings");
