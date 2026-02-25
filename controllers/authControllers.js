@@ -82,28 +82,28 @@ exports.checkUser = async (req, res) => {
     }
 }
 
-exports.updateProfile = async (req, res) => {
-    const { u_ID, de_tel, de_address, latitude, longitude } = req.body
-    try {
-        if (!u_ID || !de_lastName || !de_tel) {
-            return res.status(400).send({ message: 'Please Enter All Data' })
-        }
-        const checkSQL = `SELECT * from users WHERE u_ID = ?`
-        const [checkResult] = await conn.query(checkSQL, [u_ID])
-        if (checkResult.length === 0) {
-            return res.status(404).send({ message: `Unknow User ID : ${u_ID}`, status: 0 })
-        }
-        const updatetUserDetailSQL = 'UPDATE usersdetail SET  de_tel = ? , de_address = ? , latitude = ? , longitude = ? WHERE u_ID = ?'
-        const [updateResult] = await conn.query(updatetUserDetailSQL, [de_tel, de_address, latitude, longitude, u_ID])
-        if (updateResult.affectedRows === 0) {
-            return res.status(400).send({ message: `Update Profile Unsuccess`, status: 0 })
-        }
-        return res.status(200).send({ message: `Update Profile Successfully`, status: 1 })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: `Something Went Wrong`, status: 0 })
-    }
-}
+// exports.updateProfile = async (req, res) => {
+//     const { u_ID, de_tel, de_address, latitude, longitude } = req.body
+//     try {
+//         if (!u_ID || !de_lastName || !de_tel) {
+//             return res.status(400).send({ message: 'Please Enter All Data' })
+//         }
+//         const checkSQL = `SELECT * from users WHERE u_ID = ?`
+//         const [checkResult] = await conn.query(checkSQL, [u_ID])
+//         if (checkResult.length === 0) {
+//             return res.status(404).send({ message: `Unknow User ID : ${u_ID}`, status: 0 })
+//         }
+//         const updatetUserDetailSQL = 'UPDATE usersdetail SET  de_tel = ? , de_address = ? , latitude = ? , longitude = ? WHERE u_ID = ?'
+//         const [updateResult] = await conn.query(updatetUserDetailSQL, [de_tel, de_address, latitude, longitude, u_ID])
+//         if (updateResult.affectedRows === 0) {
+//             return res.status(400).send({ message: `Update Profile Unsuccess`, status: 0 })
+//         }
+//         return res.status(200).send({ message: `Update Profile Successfully`, status: 1 })
+//     } catch (error) {
+//         console.log(error)
+//         return res.status(500).send({ message: `Something Went Wrong`, status: 0 })
+//     }
+// }
 
 exports.deleteUser = async (req, res) => {
     const { u_ID } = req.body
