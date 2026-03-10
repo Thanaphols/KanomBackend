@@ -4,6 +4,7 @@ const LineService = require('../services/lineService');
 exports.addCart = async (req, res) => {
     const { cart, addr_ID } = req.body;
     const u_ID = req.userData.u_ID;
+    const io = req.app.get('io')
     try {
         if (!u_ID) {
             return res.status(400).send({ message: `User ID is Missing`, status: 0 });
@@ -79,7 +80,7 @@ exports.addCart = async (req, res) => {
                 totalPrice: totalPrice
             });
         }
-
+        io.emit('refreshOrders')
         return res.status(201).send({ message: `Order Success`, status: 1 });
 
     } catch (error) {
