@@ -1,14 +1,32 @@
-//index.js
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser')
 const cors = require('cors')
-require('dotenv').config();
 const http = require('http')
 const { Server } = require('socket.io')
 const LineService = require('./services/lineService');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const RouterUsers = require('./routers/user')
+const RouterProduct = require('./routers/product')
+const RouterOrder = require('./routers/order')
+const RouterCategory = require('./routers/category')
+const RouterAuth = require('./routers/auth');
+const RouterCart = require('./routers/cart');
+const RouterCost = require('./routers/cost');
+const Routerfinancials = require('./routers/financials');
+const RouterStore = require('./routers/store');
+const RouterDashboard = require('./routers/dashboard');
+const RouterAdmin = require('./routers/admin');
+const apiRouter = express.Router();
+const PORT = process.env.app_port;
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+    }
+})
 const limiter = rateLimit({
     windowMs: 0.3 * 60 * 1000,
     limit: 300,
@@ -17,17 +35,10 @@ const limiter = rateLimit({
     ipv6Subnet: 56,
 
 })
-const PORT = process.env.app_port;
-const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: '*',
-    }
-})
 io.on('connection', (socket) => {
-    // console.log('📡 client connected:', socket.id)
+    // console.log('client connected:', socket.id)
     socket.on('disconnect', () => {
-        // console.log('❌ client disconnected:', socket.id);
+    // console.log('client disconnected:', socket.id);
     });
 })
 
@@ -50,24 +61,9 @@ app.use(
     })
 
 );
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.set('trust proxy', 1);
-//pic upload
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/products', express.static('uploads/products'));
-//Routers
-const RouterUsers = require('./routers/user')
-const RouterProduct = require('./routers/product')
-const RouterOrder = require('./routers/order')
-const RouterCategory = require('./routers/category')
-const RouterAuth = require('./routers/auth');
-const RouterCart = require('./routers/cart');
-const RouterCost = require('./routers/cost');
-const Routerfinancials = require('./routers/financials');
-const RouterStore = require('./routers/store');
-const RouterDashboard = require('./routers/dashboard');
-const RouterAdmin = require('./routers/admin');
-const { Socket } = require('dgram');
-const apiRouter = express.Router();
 apiRouter.use('/cart', RouterCart)
 apiRouter.use('/users', RouterUsers)
 apiRouter.use('/products', RouterProduct)

@@ -1,6 +1,4 @@
 const conn = require('../db');
-
-// 1. ดึงข้อมูลการตั้งค่า
 exports.getSettings = async (req, res) => {
     try {
         const [rows] = await conn.query("SELECT * FROM system_settings WHERE s_key = 1");
@@ -14,11 +12,9 @@ exports.getSettings = async (req, res) => {
     }
 };
 
-// 2. อัปเดตข้อมูลการตั้งค่า
 exports.updateSettings = async (req, res) => {
     const { s_value, start_date, end_date } = req.body;
     try {
-        // ดักค่าว่าง: ถ้าหน้าบ้านส่ง "" มา ให้เป็น null เพื่อลงคอลัมน์ DATE ได้
         const finalStart = (start_date && start_date !== "") ? start_date : null;
         const finalEnd = (end_date && end_date !== "") ? end_date : null;
 

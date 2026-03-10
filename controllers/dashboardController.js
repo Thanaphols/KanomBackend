@@ -3,6 +3,7 @@ const conn = require('../db')
 
 exports.CountProduct = async (req, res) => {
     try {
+        const io = req.app.get('io'); 
         const countProductSQL = 'SELECT count(p_Name) AS totalProduct FROM product'
         const countCustomerSQL = 'SELECT count(u_userName) AS users FROM users WHERE u_role = 0'
         const countTotalOrderSQL = 'SELECT count(o_id) AS allOrder FROM orders'
@@ -66,7 +67,6 @@ exports.CountProduct = async (req, res) => {
             product: productAll[0],
             customer: customerData[0],
             todaySales: todaySalesResult[0][0].todayTotal || 0,
-            // ส่งข้อมูล Chart ไป 4 ชุด
             charts: {
                 today: chartTodayResult[0],
                 week: chartWeekResult[0],
@@ -74,7 +74,7 @@ exports.CountProduct = async (req, res) => {
                 year: chartYearResult[0]
             }
         };
-
+        io.emit('refreshDashboard');
         return res.status(200).send({ message: 'CountProduct Success', data, status: 1 })
     } catch (error) {
         console.log(error)

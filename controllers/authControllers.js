@@ -1,4 +1,3 @@
-// authcontrollers.js
 const conn = require('../db')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
@@ -81,30 +80,6 @@ exports.checkUser = async (req, res) => {
         return res.status(500).send({ message: `Something Went Wrong`, status: 0 })
     }
 }
-
-// exports.updateProfile = async (req, res) => {
-//     const { u_ID, de_tel, de_address, latitude, longitude } = req.body
-//     try {
-//         if (!u_ID || !de_lastName || !de_tel) {
-//             return res.status(400).send({ message: 'Please Enter All Data' })
-//         }
-//         const checkSQL = `SELECT * from users WHERE u_ID = ?`
-//         const [checkResult] = await conn.query(checkSQL, [u_ID])
-//         if (checkResult.length === 0) {
-//             return res.status(404).send({ message: `Unknow User ID : ${u_ID}`, status: 0 })
-//         }
-//         const updatetUserDetailSQL = 'UPDATE usersdetail SET  de_tel = ? , de_address = ? , latitude = ? , longitude = ? WHERE u_ID = ?'
-//         const [updateResult] = await conn.query(updatetUserDetailSQL, [de_tel, de_address, latitude, longitude, u_ID])
-//         if (updateResult.affectedRows === 0) {
-//             return res.status(400).send({ message: `Update Profile Unsuccess`, status: 0 })
-//         }
-//         return res.status(200).send({ message: `Update Profile Successfully`, status: 1 })
-//     } catch (error) {
-//         console.log(error)
-//         return res.status(500).send({ message: `Something Went Wrong`, status: 0 })
-//     }
-// }
-
 exports.deleteUser = async (req, res) => {
     const { u_ID } = req.body
     try {
@@ -127,7 +102,6 @@ exports.deleteUser = async (req, res) => {
         return res.statuts(500).send({message : `Something Went Wrong` , status : 0})
     }
 }
-
 
 exports.checkLogin = (req, res) => {
     const authToken = req.headers['authorization'];
@@ -153,8 +127,6 @@ exports.handleLineAuth = async (req, res) => {
             "SELECT u_ID, u_role, u_userName FROM users WHERE u_line_id = ?",
             [u_line_id]
         );
-        console.log("LINE ID from LIFF:", u_line_id);
-        console.log("Search Result:", users.length);
         if (users.length > 0) {
             const user = users[0];
             const token = jwt.sign(
