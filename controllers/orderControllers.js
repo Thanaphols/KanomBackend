@@ -205,9 +205,8 @@ exports.updateOrder = async (req, res) => {
     const { cart, o_ID, o_endDate, o_is_deposit_required, o_deposit_status } = req.body;
     const io = req.app.get('io');
     let depositAmount = 0;
-
+    let finalDepositStatus = o_deposit_status !== undefined ? Number(o_deposit_status) : 0;
     try {
-        // --- 1. ดึงค่า Config ทั้งหมด (Percent, Start, End) ---
         const [settings] = await conn.query("SELECT s_key, s_value FROM system_settings");
         const config = settings.reduce((acc, row) => ({ ...acc, [row.s_key]: row.s_value }), {});
 
@@ -217,13 +216,16 @@ exports.updateOrder = async (req, res) => {
         const endDate = config.deposit_end_date ? new Date(config.deposit_end_date) : null;
 
         // --- 2. เช็คว่าออเดอร์นี้ "ต้องมัดจำ" หรือไม่ ---
+        // ดึงวันที่สร้างออเดอร์มาเช็คกับช่วงเวลาที่ตั้งไว้
         const [orderData] = await conn.query("SELECT o_date FROM orders WHERE o_ID = ?", [o_ID]);
         const orderDate = new Date(orderData[0].o_date);
 
         const isInPeriod = startDate && endDate && orderDate >= startDate && orderDate <= endDate;
+
+        // สรุปนโยบาย: ถ้าแอดมินสั่งเปิด OR วันที่อยู่ในช่วงพิเศษ = ต้องมัดจำ
         const mustDeposit = o_is_deposit_required === 1 || isInPeriod;
 
-        const isSkippingDeposit = !mustDeposit;
+        const isSkippingDeposit = !mustDeposit; // ถ้าไม่เข้าเงื่อนไขมัดจำเลย
         const isDepositFinished = o_deposit_status === 3;
 
         if ((!mustDeposit || isDepositFinished) && !o_endDate) {
@@ -264,25 +266,24 @@ exports.updateOrder = async (req, res) => {
             updateFields.push("o_deposit_amount = ?");
             updateValues.push(depositAmount);
 
-            // ถ้าสถานะเดิมคือ 0 (ยังไม่เคยมัดจำ) ให้อัปเดตเป็น 1
-            if (targetDepositStatus === 0) {
+            if (finalDepositStatus === 0) {
                 updateFields.push("o_deposit_status = ?");
                 updateValues.push(1);
-                targetDepositStatus = 1; // 🚩 อัปเดตตัวแปรนี้ให้เป็น 1 ด้วย เพื่อให้เงื่อนไขส่ง LINE ด้านล่างทำงาน
+                finalDepositStatus = 1; // ✅ อัปเดตตัวแปรว่าตอนนี้สถานะกลายเป็น 1 แล้วนะ!
             }
         } else {
+            // ... โค้ดส่วน else เหมือนเดิม ...
             updateFields.push("o_is_deposit_required = ?", "o_deposit_status = ?", "o_deposit_amount = ?");
             updateValues.push(0, 0, 0);
-            targetDepositStatus = 0; // 🚩 เคลียร์ค่ากลับเป็น 0
+            finalDepositStatus = 0; // ✅ อัปเดตตัวแปรเพื่อความชัวร์
         }
 
         updateValues.push(o_ID);
         const orderSQL = `UPDATE orders SET ${updateFields.join(", ")} WHERE o_ID = ?`;
         await conn.query(orderSQL, updateValues);
-
         await conn.query('COMMIT');
 
-        // --- 4. ส่ง LINE ---
+        // --- 4. ส่ง LINE (เหมือนเดิม แต่ใช้ตัวแปร mustDeposit แทน) ---
         const [orderInfo] = await conn.query(`
             SELECT u.u_line_id FROM orders o 
             JOIN users u ON o.u_ID = u.u_ID WHERE o.o_ID = ?
@@ -290,8 +291,7 @@ exports.updateOrder = async (req, res) => {
 
         const customer = orderInfo[0];
         if (customer && customer.u_line_id) {
-            // 🚩 เช็คเงื่อนไขด้วย targetDepositStatus ที่อัปเดตค่าแล้ว
-            if (mustDeposit && targetDepositStatus === 1) {
+            if (mustDeposit && finalDepositStatus === 1) {
                 await LineService.sendDepositRequest(customer.u_line_id, {
                     o_ID: o_ID,
                     amount: depositAmount
