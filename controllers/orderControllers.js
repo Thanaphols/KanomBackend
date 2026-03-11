@@ -254,7 +254,6 @@ exports.updateOrder = async (req, res) => {
 
         // --- 3. จัดการสถานะและยอดมัดจำ ---
         if (mustDeposit) {
-            // บังคับลงฟิลด์นโยบายเป็น 1 (เพื่อให้หน้าบ้านรู้ว่าต้องมัดจำ)
             updateFields.push("o_is_deposit_required = ?");
             updateValues.push(1);
 
@@ -267,15 +266,16 @@ exports.updateOrder = async (req, res) => {
             updateFields.push("o_deposit_amount = ?");
             updateValues.push(depositAmount);
 
-            const currentStatus = o_deposit_status !== undefined ? Number(o_deposit_status) : 0;
-            if (currentStatus === 0) {
+            if (finalDepositStatus === 0) {
                 updateFields.push("o_deposit_status = ?");
                 updateValues.push(1);
+                finalDepositStatus = 1; // ✅ อัปเดตตัวแปรว่าตอนนี้สถานะกลายเป็น 1 แล้วนะ!
             }
         } else {
-            // ถ้าไม่อยู่ในช่วงเวลา และแอดมินก็ไม่สั่งมัดจำ -> เคลียร์เป็น 0
+            // ... โค้ดส่วน else เหมือนเดิม ...
             updateFields.push("o_is_deposit_required = ?", "o_deposit_status = ?", "o_deposit_amount = ?");
             updateValues.push(0, 0, 0);
+            finalDepositStatus = 0; // ✅ อัปเดตตัวแปรเพื่อความชัวร์
         }
 
         updateValues.push(o_ID);
@@ -291,7 +291,7 @@ exports.updateOrder = async (req, res) => {
 
         const customer = orderInfo[0];
         if (customer && customer.u_line_id) {
-            if (mustDeposit && o_deposit_status === 1) {
+            if (mustDeposit && finalDepositStatus === 1) {
                 await LineService.sendDepositRequest(customer.u_line_id, {
                     o_ID: o_ID,
                     amount: depositAmount
