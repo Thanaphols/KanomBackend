@@ -2,35 +2,35 @@ const conn = require('../db')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
-exports.register = async (req, res) => {
-    const { u_userName, de_tel, u_passWord } = req.body
-    try {
-        if (!u_userName || !de_tel || !u_passWord) {
-            return res.status(400).send({ message: 'Please Enter All Data', status: 0 })
-        }
-        const checkUserSQL = 'SELECT u_userName FROM users WHERE u_userName = ?'
-        const [userCheck] = await conn.query(checkUserSQL, [u_userName])
-        if (userCheck.length > 0) {
-            return res.status(409).send({ message: 'Username Already Taken', status: 0 })
-        }
-        const passwordHash = await bcrypt.hash(u_passWord, 10)
-        const insertUserSQL = 'INSERT INTO users (u_userName,u_passWord) VALUES (?,?) '
-        const [userResult] = await conn.query(insertUserSQL, [u_userName, passwordHash])
-        if (userResult.affectedRows === 0) {
-            return res.status(401).send({ message: 'Insert User Unsuccess', status: 0 })
-        }
-        const u_ID = userResult.insertId
-        const insertUserDetailSQL = 'INSERT INTO usersdetail (u_ID,de_tel) VALUES (?,?)'
-        const [detailResult] = await conn.query(insertUserDetailSQL, [u_ID, de_tel])
-        if (detailResult.affectedRows === 0) {
-            return res.status(400).send({ message: 'Insert Detail Unsuccess', status: 0 })
-        }
-        return res.status(201).send({ message: 'Register Success', status: 1 })
-    } catch (error) {
-        console.log(error)
-        return res.status(500).send({ message: 'Somthing Weng Wrongs', status: 0 })
-    }
-}
+// exports.register = async (req, res) => {
+//     const { u_userName, de_tel, u_passWord } = req.body
+//     try {
+//         if (!u_userName || !de_tel || !u_passWord) {
+//             return res.status(400).send({ message: 'Please Enter All Data', status: 0 })
+//         }
+//         const checkUserSQL = 'SELECT u_userName FROM users WHERE u_userName = ?'
+//         const [userCheck] = await conn.query(checkUserSQL, [u_userName])
+//         if (userCheck.length > 0) {
+//             return res.status(409).send({ message: 'Username Already Taken', status: 0 })
+//         }
+//         const passwordHash = await bcrypt.hash(u_passWord, 10)
+//         const insertUserSQL = 'INSERT INTO users (u_userName,u_passWord) VALUES (?,?) '
+//         const [userResult] = await conn.query(insertUserSQL, [u_userName, passwordHash])
+//         if (userResult.affectedRows === 0) {
+//             return res.status(401).send({ message: 'Insert User Unsuccess', status: 0 })
+//         }
+//         const u_ID = userResult.insertId
+//         const insertUserDetailSQL = 'INSERT INTO usersdetail (u_ID,de_tel) VALUES (?,?)'
+//         const [detailResult] = await conn.query(insertUserDetailSQL, [u_ID, de_tel])
+//         if (detailResult.affectedRows === 0) {
+//             return res.status(400).send({ message: 'Insert Detail Unsuccess', status: 0 })
+//         }
+//         return res.status(201).send({ message: 'Register Success', status: 1 })
+//     } catch (error) {
+//         console.log(error)
+//         return res.status(500).send({ message: 'Somthing Weng Wrongs', status: 0 })
+//     }
+// }
 
 exports.login = async (req, res) => {
     try {
@@ -122,11 +122,15 @@ exports.checkLogin = (req, res) => {
 
 exports.handleLineAuth = async (req, res) => {
     const { u_line_id, u_userName, de_tel, de_address, latitude, longitude } = req.body;
+    
+    const io = req.app.get('io'); 
+
     try {
         const [users] = await conn.query(
             "SELECT u_ID, u_role, u_userName FROM users WHERE u_line_id = ?",
             [u_line_id]
         );
+
         if (users.length > 0) {
             const user = users[0];
             const token = jwt.sign(
@@ -159,6 +163,8 @@ exports.handleLineAuth = async (req, res) => {
             await conn.query('COMMIT');
 
             const token = jwt.sign({ u_ID: newUserID, u_role: 0 }, process.env.SECRET_KEY_Token, { expiresIn: '1d' });
+
+            io.emit('refreshUsers'); 
 
             return res.status(200).json({
                 status: 1,

@@ -47,6 +47,8 @@ exports.getCategoryWithCount = async (req, res) => {
 
 exports.addCategory = async (req, res) => {
     const { c_Name } = req.body
+    const io = req.app.get('io');
+
     try {
         if (!c_Name) {
             return res.status(400).send({ message: "กรุณากรอกชื่อหมวดหมู่", status: 0 })
@@ -61,6 +63,10 @@ exports.addCategory = async (req, res) => {
         if (result.affectedRows === 0) {
             return res.status(401).send({ message: "ไม่สามารถเพิ่มหมวดหมู่ได้", status: 0 })
         }
+
+        io.emit('refreshCategories');
+        io.emit('refreshProducts');
+
         return res.status(201).send({ message: "เพิ่มหมวดหมู่สินค้าสำเร็จ", status: 1 })
     } catch (error) {
         console.log(error)
@@ -70,6 +76,8 @@ exports.addCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
     const { c_ID, c_Name } = req.body
+    const io = req.app.get('io');
+
     try {
         if (!c_ID || !c_Name) {
             return res.status(400).send({ message: "กรุณากรอกข้อมูลให้ครบถ้วน", status: 0 })
@@ -84,6 +92,10 @@ exports.updateCategory = async (req, res) => {
         if (result.affectedRows === 0) {
             return res.status(400).send({ message: "ไม่มีการเปลี่ยนแปลงข้อมูล หรือไม่สามารถอัปเดตได้", status: 0 })
         }
+
+        io.emit('refreshCategories');
+        io.emit('refreshProducts');
+
         return res.status(200).send({ message: "แก้ไขชื่อหมวดหมู่สำเร็จ", status: 1 })
     } catch (error) {
         console.log(error)
@@ -93,6 +105,8 @@ exports.updateCategory = async (req, res) => {
 
 exports.deleteCategory = async (req, res) => {
     const { c_ID } = req.params
+    const io = req.app.get('io');
+
     try {
         if (!c_ID) {
             return res.status(400).send({ message: "รหัสหมวดหมู่ไม่ถูกต้อง", status: 0 })
@@ -102,18 +116,20 @@ exports.deleteCategory = async (req, res) => {
         if (checkResult.length === 0) {
             return res.status(404).send({ message: 'ไม่พบรหัสหมวดหมู่: ' + c_ID, status: 0 })
         }
-        
-        // ลบสินค้าในหมวดหมู่นั้นก่อน
+
         const productSQL = `DELETE FROM product WHERE c_ID = ?`
         await conn.query(productSQL, [c_ID])
-        
-        // ลบหมวดหมู่
+
         const categorySQL = "DELETE FROM category WHERE c_ID = ?"
         const [categoryResult] = await conn.query(categorySQL, [c_ID])
-        
+
         if (categoryResult.affectedRows === 0) {
             return res.status(400).send({ message: "ลบหมวดหมู่ไม่สำเร็จ", status: 0 })
         }
+
+        io.emit('refreshCategories');
+        io.emit('refreshProducts');
+
         return res.status(200).send({ message: "ลบหมวดหมู่และสินค้าที่เกี่ยวข้องทั้งหมดเรียบร้อยแล้ว", status: 1 })
     } catch (error) {
         console.log(error)
