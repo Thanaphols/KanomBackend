@@ -286,7 +286,7 @@ const LineService = {
 
     sendDepositRequest: async (u_line_id, depositData) => {
         // กำหนดข้อความตามสถานการณ์
-        const headerTitle = depositData.isReject ? '❌ สลิปไม่ถูกต้อง' : '💰 แจ้งยอดมัดจำ 50%';
+        const headerTitle = depositData.isReject ? '❌ สลิปไม่ถูกต้อง' : '💰 แจ้งยอดมัดจำ';
         const headerColor = depositData.isReject ? '#FF5252' : '#FFC107';
         const noticeText = depositData.isReject
             ? 'รูปสลิปที่ส่งมาไม่ถูกต้อง/สลิปปลอม กรุณาตรวจสอบและโอนใหม่อีกครั้งค่ะ'

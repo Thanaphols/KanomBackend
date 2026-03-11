@@ -3,7 +3,7 @@ exports.getSettings = async (req, res) => {
     try {
         const [rows] = await conn.query("SELECT * FROM system_settings WHERE s_key = 1");
         if (rows.length > 0) {
-            // ส่งออกไปทั้งก้อนเลย { s_value, start_date, end_date }
+
             return res.status(200).json({ status: 1, data: rows[0] });
         }
         res.status(404).json({ status: 0, message: "ไม่พบการตั้งค่า" });
