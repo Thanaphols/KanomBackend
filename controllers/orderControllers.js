@@ -205,8 +205,8 @@ exports.updateOrder = async (req, res) => {
     const { cart, o_ID, o_endDate, o_is_deposit_required, o_deposit_status } = req.body;
     const io = req.app.get('io');
     let depositAmount = 0;
+    let finalDepositStatus = o_deposit_status !== undefined ? Number(o_deposit_status) : 0;
     try {
-        // --- 1. ดึงค่า Config ทั้งหมด (Percent, Start, End) ---
         const [settings] = await conn.query("SELECT s_key, s_value FROM system_settings");
         const config = settings.reduce((acc, row) => ({ ...acc, [row.s_key]: row.s_value }), {});
 
@@ -215,18 +215,14 @@ exports.updateOrder = async (req, res) => {
         const startDate = config.deposit_start_date ? new Date(config.deposit_start_date) : null;
         const endDate = config.deposit_end_date ? new Date(config.deposit_end_date) : null;
 
-        // --- 2. เช็คว่าออเดอร์นี้ "ต้องมัดจำ" หรือไม่ ---
-        // ดึงวันที่สร้างออเดอร์มาเช็คกับช่วงเวลาที่ตั้งไว้
         const [orderData] = await conn.query("SELECT o_date FROM orders WHERE o_ID = ?", [o_ID]);
         const orderDate = new Date(orderData[0].o_date);
 
-        // เงื่อนไข: อยู่ในช่วงวันที่กำหนดหรือไม่?
         const isInPeriod = startDate && endDate && orderDate >= startDate && orderDate <= endDate;
 
-        // สรุปนโยบาย: ถ้าแอดมินสั่งเปิด OR วันที่อยู่ในช่วงพิเศษ = ต้องมัดจำ
         const mustDeposit = o_is_deposit_required === 1 || isInPeriod;
 
-        const isSkippingDeposit = !mustDeposit; // ถ้าไม่เข้าเงื่อนไขมัดจำเลย
+        const isSkippingDeposit = !mustDeposit; 
         const isDepositFinished = o_deposit_status === 3;
 
         if ((!mustDeposit || isDepositFinished) && !o_endDate) {
@@ -235,7 +231,6 @@ exports.updateOrder = async (req, res) => {
 
         await conn.query('START TRANSACTION');
 
-        // ... (ส่วนอัปเดต cart เหมือนเดิมของพี่) ...
         if (cart && cart.length > 0) {
             for (const item of cart) {
                 const orderItemSQL = `UPDATE ordersitems SET i_Amount = ? WHERE i_ID = ? `;
@@ -251,9 +246,7 @@ exports.updateOrder = async (req, res) => {
             updateValues.push(o_endDate);
         }
 
-        // --- 3. จัดการสถานะและยอดมัดจำ ---
-        if (mustDeposit) {
-            // บังคับลงฟิลด์นโยบายเป็น 1 (เพื่อให้หน้าบ้านรู้ว่าต้องมัดจำ)
+       if (mustDeposit) {
             updateFields.push("o_is_deposit_required = ?");
             updateValues.push(1);
 
@@ -266,24 +259,22 @@ exports.updateOrder = async (req, res) => {
             updateFields.push("o_deposit_amount = ?");
             updateValues.push(depositAmount);
 
-            const currentStatus = o_deposit_status !== undefined ? Number(o_deposit_status) : 0;
-            if (currentStatus === 0) {
+            if (finalDepositStatus === 0) {
                 updateFields.push("o_deposit_status = ?");
                 updateValues.push(1);
+                finalDepositStatus = 1; // ✅ อัปเดตตัวแปรว่าตอนนี้สถานะกลายเป็น 1 แล้วนะ!
             }
         } else {
-            // ถ้าไม่อยู่ในช่วงเวลา และแอดมินก็ไม่สั่งมัดจำ -> เคลียร์เป็น 0
+            // ... โค้ดส่วน else เหมือนเดิม ...
             updateFields.push("o_is_deposit_required = ?", "o_deposit_status = ?", "o_deposit_amount = ?");
             updateValues.push(0, 0, 0);
+            finalDepositStatus = 0; // ✅ อัปเดตตัวแปรเพื่อความชัวร์
         }
 
         updateValues.push(o_ID);
         const orderSQL = `UPDATE orders SET ${updateFields.join(", ")} WHERE o_ID = ?`;
         await conn.query(orderSQL, updateValues);
-
         await conn.query('COMMIT');
-
-        // --- 4. ส่ง LINE (เหมือนเดิม แต่ใช้ตัวแปร mustDeposit แทน) ---
         const [orderInfo] = await conn.query(`
             SELECT u.u_line_id FROM orders o 
             JOIN users u ON o.u_ID = u.u_ID WHERE o.o_ID = ?
@@ -291,7 +282,7 @@ exports.updateOrder = async (req, res) => {
 
         const customer = orderInfo[0];
         if (customer && customer.u_line_id) {
-            if (mustDeposit && o_deposit_status === 1) {
+            if (mustDeposit && finalDepositStatus === 1) {
                 await LineService.sendDepositRequest(customer.u_line_id, {
                     o_ID: o_ID,
                     amount: depositAmount
