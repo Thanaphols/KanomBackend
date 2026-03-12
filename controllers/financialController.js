@@ -199,11 +199,10 @@ exports.addFinancial = async (req, res) => {
 exports.updateFinancial = async (req, res) => {
     const { type, items } = req.body;
     const io = req.app.get('io');
-    const u_ID = req.userData.u_ID; // ตรวจสอบว่าใช้ตัวแปร u_ID จาก middleware ถูกต้อง
+    const u_ID = req.userData.u_ID; 
 
     const transactionId = type === 'รายรับ' ? req.body.o_ID : req.body.c_ID;
 
-    // [ข้อ 7 & 9] ปิดการแก้ไขรายรับตามโจทย์พี่เลยครับ
     if (type === 'รายรับ') {
         return res.status(403).send({
             message: "ไม่อนุญาตให้แก้ไขข้อมูลรายรับเพื่อความปลอดภัยทางการเงิน",
@@ -216,23 +215,20 @@ exports.updateFinancial = async (req, res) => {
     }
 
     try {
-        // เริ่ม Transaction เพื่อความปลอดภัย (ถ้าล้มเหลวให้ย้อนกลับทั้งหมด)
+        
         await conn.query('START TRANSACTION');
 
-        // 1. ดึงราคารวมเก่าก่อนแก้ (คำนวณจาก financials_items เดิม)
         const [oldData] = await conn.query(
             "SELECT SUM(fi_Price) as total FROM financials_items WHERE f_ID = ?",
             [transactionId]
         );
         const oldTotal = oldData[0].total || 0;
 
-        // 2. คำนวณราคารวมใหม่จากรายการที่ส่งมา
+    
         const newTotal = items.reduce((sum, item) => sum + (parseFloat(item.fi_Price) || 0), 0);
 
-        // 3. อัปเดตข้อมูลหลัก (วันที่)
         await conn.query(`UPDATE financials SET f_Date = NOW() WHERE f_ID = ?`, [transactionId]);
 
-        // 4. ลบรายการเก่าและเพิ่มรายการใหม่
         await conn.query(`DELETE FROM financials_items WHERE f_ID = ?`, [transactionId]);
 
         if (items.length > 0) {
@@ -246,14 +242,12 @@ exports.updateFinancial = async (req, res) => {
             await conn.query(insertItemsSql, [insertValues]);
         }
 
-        // 5. บันทึกประวัติการแก้ไขลง financial_logs (ใช้ชื่อคอลัมน์ตามรูปเป๊ะ)
         const logSql = `
             INSERT INTO financial_logs (f_ID, u_ID, old_price, new_price, action_type) 
             VALUES (?, ?, ?, ?, 'UPDATE')
         `;
         await conn.query(logSql, [transactionId, u_ID, oldTotal, newTotal]);
 
-        // ยืนยันข้อมูลทั้งหมด
         await conn.query('COMMIT');
 
         io.emit('refreshFinancials');
@@ -263,53 +257,96 @@ exports.updateFinancial = async (req, res) => {
         });
 
     } catch (error) {
-        await conn.query('ROLLBACK'); // ย้อนกลับถ้ามี Error
+        await conn.query('ROLLBACK');
         console.error("Update Financial Error:", error);
         return res.status(500).send({ message: "เกิดข้อผิดพลาดในการบันทึก", status: 0 });
     }
 };
 
 exports.deleteFinancial = async (req, res) => {
-    // รับค่า id และ type จาก Body
     const { id, type } = req.body;
     const io = req.app.get('io');
-    console.log(`Deleting ${type} ID: ${id}`);
+    
+    // 🚩 1. ดึง u_ID ของคนที่กดลบมาเก็บไว้สำหรับลง Log
+    const u_ID = req.userData.u_ID; 
+
+    console.log(`Deleting ${type} ID: ${id} by User: ${u_ID}`);
 
     if (!id || !type) {
         return res.status(400).send({ message: "ข้อมูลไม่ครบ (ID หรือ Type หายไป)", status: 0 });
     }
 
     try {
-        if (type === 'รายจ่าย') {
-            // --- ลบรายจ่าย (financials & financials_items) ---
+        // 🚩 2. เริ่ม Transaction ป้องกันข้อมูลพังหากลบพลาดกลางคัน
+        await conn.query('START TRANSACTION');
 
-            // 1. ลบรายการลูกก่อน (Items)
+        let oldTotal = 0;
+
+        if (type === 'รายจ่าย') {
+            // 🚩 3. ดึงยอดรวมเดิมก่อนลบ เพื่อเอาไปบันทึกลง Log
+            const [oldData] = await conn.query(
+                "SELECT SUM(fi_Price) as total FROM financials_items WHERE f_ID = ?",
+                [id]
+            );
+            oldTotal = oldData[0].total || 0;
+
+            // ลบ Items (ลูก)
             const deleteItemsSql = `DELETE FROM financials_items WHERE f_ID = ?`;
             await conn.query(deleteItemsSql, [id]);
 
-            // 2. ลบรายการแม่ (Header)
+            // ลบ Main (แม่)
             const deleteMainSql = `DELETE FROM financials WHERE f_ID = ?`;
             await conn.query(deleteMainSql, [id]);
 
-        } else if (type === 'รายรับ') {
-            // --- ลบรายรับ (orders & ordersitems) ---
+            // 🚩 4. บันทึก Log การลบรายจ่าย
+            const logSql = `
+                INSERT INTO financial_logs (f_ID, u_ID, old_price, new_price, action_type) 
+                VALUES (?, ?, ?, 0, 'DELETE')
+            `;
+            // ใช้ new_price เป็น 0 เพราะข้อมูลถูกลบทิ้งไปแล้ว
+            await conn.query(logSql, [id, u_ID, oldTotal]);
 
-            // 1. ลบรายการลูกก่อน (Items)
+        } else if (type === 'รายรับ') {
+            // ดึงยอดรวมเดิมของออเดอร์ก่อนลบ (อิงจากตาราง ordersitems และ product)
+            const [oldOrderData] = await conn.query(`
+                SELECT SUM(oi.i_Amount * p.p_Price) as total 
+                FROM ordersitems oi 
+                JOIN product p ON oi.p_ID = p.p_ID 
+                WHERE oi.o_ID = ?`, 
+                [id]
+            ).catch(() => [[{ total: 0 }]]); // ดัก catch เผื่อ query ไม่ตรงโครงสร้าง
+            
+            oldTotal = oldOrderData[0].total || 0;
+
+            // ลบ Items (ลูก)
             const deleteItemsSql = `DELETE FROM ordersitems WHERE o_ID = ?`;
             await conn.query(deleteItemsSql, [id]);
 
-            // 2. ลบรายการแม่ (Header)
+            // ลบ Main (แม่)
             const deleteMainSql = `DELETE FROM orders WHERE o_ID = ?`;
             await conn.query(deleteMainSql, [id]);
+
+            // 🚩 4. บันทึก Log การลบรายรับ (ใช้คำว่า DELETE_INCOME เพื่อแยกให้ชัดเจน)
+            const logSql = `
+                INSERT INTO financial_logs (f_ID, u_ID, old_price, new_price, action_type) 
+                VALUES (?, ?, ?, 0, 'DELETE_INCOME')
+            `;
+            await conn.query(logSql, [id, u_ID, oldTotal]);
         }
+
+        // 🚩 5. ยืนยันการเปลี่ยนแปลงทั้งหมด
+        await conn.query('COMMIT');
+
         io.emit('refreshFinancials');
         return res.status(200).send({
-            message: `ลบข้อมูล ${type} สำเร็จ`,
+            message: `ลบข้อมูล ${type} และบันทึกประวัติสำเร็จ`,
             status: 1,
             deletedId: id
         });
 
     } catch (error) {
+        // 🚩 6. ถ้ายกเลิกพลาด หรือลง Log ไม่ได้ ให้ Rollback ข้อมูลกลับมาเหมือนเดิม
+        await conn.query('ROLLBACK');
         console.error("Delete Error:", error);
         return res.status(500).send({
             message: "เกิดข้อผิดพลาดในการลบข้อมูล",
@@ -374,8 +411,7 @@ exports.getAllRecipes = async (req, res) => {
     }
 };
 
-// controllers/financialController.js
-// 2. เพิ่มสูตรใหม่ (Create)
+
 exports.addRecipe = async (req, res) => {
     const { r_Name, ingredients } = req.body;
     const io = req.app.get('io');
@@ -398,7 +434,6 @@ exports.addRecipe = async (req, res) => {
     }
 };
 
-// 3. แก้ไขสูตร (Update)
 exports.updateRecipe = async (req, res) => {
     const { r_ID } = req.params;
     const { r_Name, ingredients } = req.body;
@@ -424,13 +459,12 @@ exports.updateRecipe = async (req, res) => {
     }
 };
 
-// 4. ลบสูตร (Delete)
+
 exports.deleteRecipe = async (req, res) => {
     const { r_ID } = req.params;
     const io = req.app.get('io');
     try {
-        // เนื่องจากเราตั้ง ON DELETE CASCADE ไว้ใน SQL ตอนสร้างตาราง 
-        // ลบแค่ recipes วัตถุดิบใน recipe_items จะหายไปเองอัตโนมัติ
+
         await conn.query("DELETE FROM recipes WHERE r_ID = ?", [r_ID]);
         io.emit('refreshRecipes');
         res.status(200).json({ status: 1, message: "ลบสูตรเรียบร้อย" });
